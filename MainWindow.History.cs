@@ -38,9 +38,11 @@ public partial class MainWindow
         int request = ++miniRevision;
         try
         {
-            var frames = demoHistory ?? (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(HistoryRanges.Start(preferences.HistoryRange, DateTimeOffset.Now), DateTimeOffset.Now)));
+            DateTimeOffset now = DateTimeOffset.Now;
+            DateTimeOffset start = HistoryRanges.Start(preferences.HistoryRange, now);
+            var frames = demoHistory != null ? demoHistory.Where(f => f.Time >= start && f.Time <= now).ToList() : (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(start, now)));
             if (closing || request != miniRevision) return;
-            MiniHistory.SetData(HistoryMath.Series(frames, null));
+            MiniHistory.SetData(HistoryMath.Series(frames, null), from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
             HistorySummary.Text = App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { HistorySummary.Text = "历史暂不可读 · 点击查看"; }
@@ -93,6 +95,12 @@ public partial class MainWindow
         await Task.Delay(150);
         CaptureControl(window, Path.Combine(directory, "history-changes.png"));
         window.Close();
+        var today = new HistoryWindow(null, demoHistory, new Preferences { HistoryRange = "today" }) { Width = 960, Height = 680 };
+        today.Show(); await today.ReloadAsync(); await Task.Delay(150);
+        CaptureControl(today, Path.Combine(directory, "history-today.png"));
+        today.Width = 730; await Task.Delay(150);
+        CaptureControl(today, Path.Combine(directory, "history-today-narrow.png"));
+        today.Close();
         Capture(Path.Combine(directory, "widget-history.png"));
         DetailsPanel.Visibility = Visibility.Collapsed;
         await Task.Delay(180);

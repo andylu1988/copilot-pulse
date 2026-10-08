@@ -2,11 +2,11 @@
 
 Windows 桌面 Copilot 用量小组件：实时刷新、历史趋势、迷你数字框、22 套皮肤和动态效果。
 
-**当前版本：1.9.4 · Windows 10 1809+ / Windows 11 · x64**
+**当前版本：1.9.5 · Windows 10 1809+ / Windows 11 · x64**
 
 ## 下载与安装
 
-从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.4-x64.exe`，双击按当前用户安装。无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时会运行微软官方引导程序，该步骤需要联网。安装包尚未进行代码签名。
+从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.5-x64.exe`，双击按当前用户安装。无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时会运行微软官方引导程序，该步骤需要联网。安装包尚未进行代码签名。
 
 默认安装到 `%LOCALAPPDATA%\Programs\CopilotPulse`，提供开始菜单入口和可选桌面快捷方式。升级前请从托盘退出组件；升级和卸载保留历史及个人设置。
 
@@ -26,6 +26,7 @@ Windows 桌面 Copilot 用量小组件：实时刷新、历史趋势、迷你数
 - 完整、紧凑、迷你数字三种模式；拖动移动，双击迷你框展开。
 - 右键或设置菜单选择皮肤、动效强度和速度，可关闭动画。
 - 历史趋势支持累计折线、变化柱状图，以及总额和单个企业。
+- “今天”按本机日期显示当天 00:00 到当前时间的已采集记录，跨午夜自动切换；未采集时段留空。曲线显示累计用量，区间变化为已记录首末读数之差。
 - 收起到托盘后双击图标恢复；托盘菜单退出。
 
 连接失败时保留并标记上次成功读数，首次未登录时不展示虚构金额。示例模式明确标为示例。

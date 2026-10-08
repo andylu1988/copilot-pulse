@@ -1,6 +1,10 @@
 # Copilot Pulse
 
-当前版本：**1.9.4**。提供按用户安装的 Windows x64 安装包，保留 C「用量刻度」图标和全部动态皮肤。
+## 1.9.5：今天的用量趋势
+
+历史图表新增“今天”，按本机时区从当天 00:00 到当前时间筛选记录，并固定横轴为这一时间区间。没有采集的时段留空，不补造午夜金额；累计用量和单次变化沿用现有统计口径。跨午夜后自动切换日期，选择重启后恢复，主窗口迷你趋势同步使用这一范围。夏令时切换日使用午夜实际对应的时区偏移。窄窗口的筛选按钮与时间说明分行显示。
+
+当前版本：**1.9.5**。提供按用户安装的 Windows x64 安装包，保留 C「用量刻度」图标和全部动态皮肤。
 
 一个 Windows 桌面用量小组件，读取你登录后的 [Copilot Consumption 页面](https://copilot.github.microsoft.com/?section=limits&tab=consumption)，展示本月内部 USD 总额，以及每个企业的金额、已用百分比和 Monthly limit。
 
@@ -31,7 +35,7 @@ Monthly limit 是页面给出的使用上限，不是预算；组件不会把它
 
 ## 运行环境
 
-Windows 10（1809 或更新）/11 x64、Microsoft Edge WebView2 Runtime。1.9.4 安装包自带 .NET 8 Desktop Runtime；安装时检查 WebView2，缺少时运行随包附带的微软官方引导程序（该步骤需要联网）。需要能正常访问 Microsoft 企业登录和 Copilot 内部页面的网络环境。
+Windows 10（1809 或更新）/11 x64、Microsoft Edge WebView2 Runtime。1.9.5 安装包自带 .NET 8 Desktop Runtime；安装时检查 WebView2，缺少时运行随包附带的微软官方引导程序（该步骤需要联网）。需要能正常访问 Microsoft 企业登录和 Copilot 内部页面的网络环境。
 
 如果访问策略不允许嵌入式 WebView2 登录，组件会停留在官方登录页面，不能绕过该策略。页面布局变更也可能需要更新 `extract-consumption.js`。
 

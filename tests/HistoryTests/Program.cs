@@ -71,6 +71,33 @@ var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(Syst
 Check("selected history range and mode survive serialization", restoredView.HistoryRange == "all" && restoredView.HistoryChanges);
 Check("all-history range has no rolling cutoff", HistoryRanges.Start("all", start) == DateTimeOffset.MinValue);
 
+var china = TimeZoneInfo.CreateCustomTimeZone("Test UTC+8", TimeSpan.FromHours(8), "Test UTC+8", "Test UTC+8");
+var todayNow = new DateTimeOffset(2026, 10, 8, 14, 30, 0, TimeSpan.FromHours(8));
+var midnight = new DateTimeOffset(2026, 10, 8, 0, 0, 0, TimeSpan.FromHours(8));
+Check("today is an accepted range with a distinct label", HistoryRanges.Normalize("today") == "today" && HistoryRanges.Label("today") == "今天");
+Check("today starts at local midnight rather than 24 hours ago", HistoryRanges.Start("today", todayNow, china) == midnight);
+Check("today resolves the local date even when now is supplied in UTC", HistoryRanges.Start("today", todayNow.ToUniversalTime(), china) == midnight);
+Check("today advances at the next local midnight", HistoryRanges.Start("today", midnight.AddDays(1), china) == midnight.AddDays(1));
+Check("today includes exactly midnight", HistoryRanges.Start("today", midnight, china) == midnight);
+Check("rolling ranges retain their previous behavior", HistoryRanges.Start("24h", todayNow) == todayNow.AddHours(-24) && HistoryRanges.Start("7d", todayNow) == todayNow.AddDays(-7));
+var todayPreferences = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "today" }))!;
+Check("today selection survives restart serialization and normalization", HistoryRanges.Normalize(todayPreferences.HistoryRange) == "today");
+var eastern = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+var springNow = new DateTimeOffset(2026, 3, 8, 12, 0, 0, TimeSpan.FromHours(-4));
+var springMidnight = HistoryRanges.Start("today", springNow, eastern);
+Check("DST spring midnight uses its own offset", springMidnight == new DateTimeOffset(2026, 3, 8, 0, 0, 0, TimeSpan.FromHours(-5)) && springMidnight.Offset == TimeSpan.FromHours(-5));
+var fallNow = new DateTimeOffset(2026, 11, 1, 12, 0, 0, TimeSpan.FromHours(-5));
+var fallMidnight = HistoryRanges.Start("today", fallNow, eastern);
+Check("DST fall midnight uses its own offset", fallMidnight == new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(-4)) && fallMidnight.Offset == TimeSpan.FromHours(-4));
+var todayRepository = new HistoryRepository(Path.Combine(directory, "today-boundaries"));
+todayRepository.Record(Sample(midnight.AddSeconds(-1), 1), 60);
+todayRepository.Record(Sample(midnight.ToUniversalTime(), 2), 60);
+todayRepository.Record(Sample(todayNow, 3), 60);
+todayRepository.Record(Sample(todayNow.AddSeconds(1), 4), 60);
+var todaySamples = todayRepository.ReadRange(HistoryRanges.Start("today", todayNow, china), todayNow);
+Check("today includes midnight and now but excludes yesterday and future samples", todaySamples.Count == 2 && todaySamples[0].Total == 2 && todaySamples[1].Total == 3);
+Check("today does not invent a midnight baseline", HistoryMath.Series(todaySamples.TakeLast(1).ToList(), null)[0].Delta == null);
+
 Console.WriteLine($"{passed} history checks passed.");
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

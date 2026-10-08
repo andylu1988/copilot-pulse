@@ -115,10 +115,17 @@ public static class DataStorage
 
 public static class HistoryRanges
 {
-    public static string Normalize(string? range) => range is "24h" or "7d" or "month" or "all" ? range : "month";
-    public static DateTimeOffset Start(string? range, DateTimeOffset now) => Normalize(range) switch {
+    public static string Normalize(string? range) => range is "today" or "24h" or "7d" or "month" or "all" ? range : "month";
+    public static DateTimeOffset Start(string? range, DateTimeOffset now, TimeZoneInfo? localTimeZone = null) => Normalize(range) switch {
+        "today" => LocalMidnight(now, localTimeZone ?? TimeZoneInfo.Local),
         "24h" => now.AddHours(-24), "7d" => now.AddDays(-7), "all" => DateTimeOffset.MinValue,
         _ => new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, now.Offset)
     };
-    public static string Label(string? range) => Normalize(range) switch { "24h" => "24 小时", "7d" => "7 天", "all" => "全部历史", _ => "本月" };
+    private static DateTimeOffset LocalMidnight(DateTimeOffset now, TimeZoneInfo zone)
+    {
+        // Resolve the offset at midnight, which can differ from now on a DST transition day.
+        DateTime midnight = TimeZoneInfo.ConvertTime(now, zone).Date;
+        return new DateTimeOffset(midnight, zone.GetUtcOffset(midnight));
+    }
+    public static string Label(string? range) => Normalize(range) switch { "today" => "今天", "24h" => "24 小时", "7d" => "7 天", "all" => "全部历史", _ => "本月" };
 }

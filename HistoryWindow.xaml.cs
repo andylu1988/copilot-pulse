@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace CopilotPulse;
 
@@ -22,6 +23,8 @@ public partial class HistoryWindow : Window
     private string? series;
     private bool changes, closed;
     private int revision;
+    private DateTimeOffset chartStart, chartEnd;
+    private readonly DispatcherTimer todayRefresh = new() { Interval = TimeSpan.FromMinutes(1) };
 
     public HistoryWindow(HistoryRepository? repository, IReadOnlyList<HistoryFrame>? demo = null, Preferences? preferences = null, Action? viewChanged = null)
     {
@@ -40,8 +43,9 @@ public partial class HistoryWindow : Window
         MaxWidth = SystemParameters.WorkArea.Width;
         if (demo != null) { ConnectionLabel.Text = "示例数据 · 非真实历史"; ConnectionLabel.Foreground = Brush("#E4BA7C"); }
         Loaded += async (_, _) => await ReloadAsync();
+        todayRefresh.Tick += async (_, _) => { if (IsVisible) await ReloadAsync(); };
         if (repository != null) repository.Changed += OnHistoryChanged;
-        Closed += (_, _) => { closed = true; if (repository != null) repository.Changed -= OnHistoryChanged; };
+        Closed += (_, _) => { closed = true; todayRefresh.Stop(); if (repository != null) repository.Changed -= OnHistoryChanged; };
         UpdateButtons();
     }
 
@@ -61,6 +65,8 @@ public partial class HistoryWindow : Window
             var loaded = demo != null ? demo.Where(f => f.Time >= start && f.Time <= now).ToList() : await Task.Run(() => repository!.ReadRange(start, now));
             if (closed || request != revision) return;
             frames = loaded;
+            chartStart = start;
+            chartEnd = now;
             if (series != null && !frames.Any(f => f.Accounts.Any(a => a.Key == series))) { series = null; SeriesButton.Content = "总用量  ▾"; }
             RenderChart();
         }
@@ -79,9 +85,9 @@ public partial class HistoryWindow : Window
         NetValue.Foreground = Brush(net < 0 ? "#F1B58B" : "#79D9BF");
         SampleCount.Text = points.Count.ToString("N0") + " 次";
         CoverageLabel.Text = points.Count > 0 ? $"实际记录 {points[0].Time.LocalDateTime:MM/dd HH:mm} — {points[^1].Time.LocalDateTime:MM/dd HH:mm}" : "从首次记录开始积累";
-        PeriodLabel.Text = HistoryRanges.Label(range);
+        PeriodLabel.Text = range == "today" ? $"今天 · {chartStart.LocalDateTime:MM/dd} 00:00 — {chartEnd.LocalDateTime:HH:mm}（本机时间）" : HistoryRanges.Label(range);
         Chart.Accent = series == null ? SkinTheme.Current.Accent : SkinTheme.Current.Secondary;
-        Chart.SetData(points, changes);
+        Chart.SetData(points, changes, range == "today" ? chartStart : null, range == "today" ? chartEnd : null);
         Footnote.Text = changes ? "单次变化 = 本次减去上次连续读数；每次间隔取决于刷新频率。中断和跨月不计算增量。" : "鼠标悬停查看读数 · 采样中断与跨月重置分段显示 · 纵轴按实际金额缩放";
         HistoryNotice.Text = demo != null ? "示例数据用于验证外观，不会写入你的历史文件。" : repository?.LastError ?? (
             points.Count == 0 ? "这个时间范围内没有记录。可点击“全部历史”查看以前保存的记录。" :
@@ -96,7 +102,8 @@ public partial class HistoryWindow : Window
 
     private void UpdateButtons()
     {
-        foreach (var button in new[] { HoursButton, WeekButton, MonthButton, AllButton }) button.Background = Brush((string)button.Tag == range ? "#284560" : "#111E31");
+        foreach (var button in new[] { TodayButton, HoursButton, WeekButton, MonthButton, AllButton }) button.Background = Brush((string)button.Tag == range ? "#284560" : "#111E31");
+        if (range == "today" && !closed) todayRefresh.Start(); else todayRefresh.Stop();
         CumulativeButton.Background = Brush(changes ? "#111E31" : "#284560");
         ChangesButton.Background = Brush(changes ? "#284560" : "#111E31");
     }

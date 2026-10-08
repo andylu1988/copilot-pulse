@@ -18,6 +18,7 @@ public sealed class HistoryChart : FrameworkElement
     public string Accent { get; set; } = "#80C9F0";
     private Rect plot;
     private double minValue, maxValue, minTime, maxTime;
+    private DateTimeOffset? rangeStart, rangeEnd;
     private static readonly CultureInfo Us = CultureInfo.GetCultureInfo("en-US");
     private static SolidColorBrush Brush(string hex) => SkinTheme.Resolve(hex);
 
@@ -42,10 +43,12 @@ public sealed class HistoryChart : FrameworkElement
         MouseLeave += (_, _) => { hovered = -1; InvalidateVisual(); };
     }
 
-    public void SetData(IReadOnlyList<HistoryPoint> values, bool changes = false)
+    public void SetData(IReadOnlyList<HistoryPoint> values, bool changes = false, DateTimeOffset? from = null, DateTimeOffset? until = null)
     {
         points = values;
         Changes = changes;
+        rangeStart = from;
+        rangeEnd = until;
         hovered = -1;
         InvalidateVisual();
     }
@@ -81,9 +84,13 @@ public sealed class HistoryChart : FrameworkElement
         minValue -= padding;
         if (!Changes) minValue = Math.Max(0, minValue);
         maxValue += padding;
-        minTime = points[0].Time.ToUnixTimeMilliseconds();
-        maxTime = points[^1].Time.ToUnixTimeMilliseconds();
-        if (maxTime == minTime) { minTime -= 30000; maxTime += 30000; }
+        minTime = (rangeStart ?? points[0].Time).ToUnixTimeMilliseconds();
+        maxTime = (rangeEnd ?? points[^1].Time).ToUnixTimeMilliseconds();
+        if (maxTime <= minTime)
+        {
+            if (rangeStart.HasValue) maxTime = minTime + 1;
+            else { minTime -= 30000; maxTime += 30000; }
+        }
         if (!Mini)
         {
             for (int i = 0; i <= 4; i++)
