@@ -1,0 +1,36 @@
+{
+  "date": "2026-09-22",
+  "method": "imagegen skill CLI; Azure OpenAI v1 Images API",
+  "assets": [
+    {
+      "file": "matrix-art-mini.png",
+      "deployment": "gpt-image-2.5-flare",
+      "source": "matrix-obsidian-flare.png",
+      "size": [
+        912,
+        384
+      ],
+      "sha256": "db90f0d7237add91bd51ef819bb930788af2e271f06e724a3d4b61c7669ab6c4"
+    },
+    {
+      "file": "matrix-art-wide.png",
+      "deployment": "gpt-image-2.5-flare",
+      "source": "matrix-obsidian-flare.png",
+      "size": [
+        1152,
+        768
+      ],
+      "sha256": "f4a9df728c4ce2d1b57e461be4a5823db5902a95403490486f3d1b599deedb57"
+    },
+    {
+      "file": "matrix-art-portrait.png",
+      "deployment": "gpt-image-2.5-sunburst",
+      "source": "matrix-portrait-sunburst.png",
+      "size": [
+        768,
+        1152
+      ],
+      "sha256": "42a131e3e1a319a36dc2bceca4f1828f7eff723deff7c5654a4897ef3196bc36"
+    }
+  ]
+}

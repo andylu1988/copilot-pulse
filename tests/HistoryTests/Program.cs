@@ -1,0 +1,76 @@
+using CopilotPulse;
+
+string directory = Path.Combine(Path.GetFullPath(args[0]), "run-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(directory);
+int passed = 0;
+void Check(string name, bool value) { if (!value) throw new Exception(name); passed++; Console.WriteLine("PASS " + name); }
+var start = new DateTimeOffset(2026, 9, 17, 10, 0, 0, TimeSpan.FromHours(8));
+Consumption Sample(DateTimeOffset time, decimal amount, bool ok = true) => new() { Ok = ok, FetchedAt = time, Total = amount, Accounts = new() { new Account { Name = "Enterprise", Login = "test-user", Cost = amount, Limit = 1000 } } };
+var repository = new HistoryRepository(directory);
+Check("failed refresh is not history", !repository.Record(Sample(start, 10, false), 60));
+Check("cached baseline retains original timestamp", repository.Record(Sample(start, 10), 60) && repository.ReadLatest()!.Time == start);
+Check("same cached snapshot is not appended twice", !repository.Record(Sample(start, 10), 60));
+Check("unchanged successful refresh is still a real sample", repository.Record(Sample(start.AddMinutes(1), 10), 60));
+Check("restart remembers the last recorded timestamp", !new HistoryRepository(directory).Record(Sample(start.AddMinutes(1), 10), 60));
+repository.Record(Sample(start.AddMinutes(2), 10.25m), 60);
+repository.Record(Sample(start.AddMinutes(3), 10.14m), 60);
+var samples = repository.ReadRange(start, start.AddHours(1));
+var series = HistoryMath.Series(samples, null);
+Check("stored decimals round-trip without drift", series[2].Value == 10.25m);
+Check("increase is exact", series[2].Delta == 0.25m);
+Check("cost corrections remain negative", series[3].Delta == -0.11m);
+Check("flat samples have zero change", series[1].Delta == 0);
+Check("net change is endpoint change", HistoryMath.NetChange(series) == 0.14m);
+Check("time window excludes earlier and later samples", repository.ReadRange(start.AddSeconds(30), start.AddSeconds(90)).Count == 1);
+Check("first point does not invent a change", series[0].Delta == null);
+var spaced = new[] { HistoryFrame.From(Sample(start, 10), 60), HistoryFrame.From(Sample(start.AddHours(1), 20), 60) };
+Check("offline interval breaks the curve and delta", HistoryMath.Series(spaced, null)[1] is { BreakBefore: true, Delta: null });
+var slow = new[] { HistoryFrame.From(Sample(start, 10), 300), HistoryFrame.From(Sample(start.AddMinutes(5), 11), 300) };
+Check("5-minute refresh is not an offline gap", HistoryMath.Series(slow, null)[1].Delta == 1);
+var rollover = new[] { HistoryFrame.From(Sample(new DateTimeOffset(2026, 9, 30, 23, 59, 0, start.Offset), 999), 60), HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 0, 0, start.Offset), 1), 60) };
+Check("new month does not create a huge negative change", HistoryMath.Series(rollover, null)[1].Delta == null);
+Check("cross-month endpoint subtraction is suppressed", HistoryMath.NetChange(HistoryMath.Series(rollover, null)) == null);
+var missing = samples.Take(3).Select(f => HistoryFrame.From(Sample(f.Time, f.Total), 60)).ToArray();
+missing[1].Accounts[0].Login = "different-user";
+var accountSeries = HistoryMath.Series(missing, "Enterprise\ntest-user");
+Check("missing account does not become zero", accountSeries.Count == 2 && accountSeries[1].Delta == null);
+Check("changed enterprise membership breaks total comparison", HistoryMath.Series(missing, null)[1].Delta == null);
+File.AppendAllText(Path.Combine(directory, "2026-09.jsonl"), "{unfinished-tail");
+Check("append recovers after an incomplete journal tail", repository.Record(Sample(start.AddMinutes(4), 10.15m), 60));
+Check("corrupt line does not discard good history", new HistoryRepository(directory).ReadRange(start, start.AddHours(1)).Count == 5);
+Check("latest survives corrupt journal tail", new HistoryRepository(directory).ReadLatest()!.Total == 10.15m);
+var nextMonth = Sample(new DateTimeOffset(2026, 10, 1, 1, 0, 0, start.Offset), 2);
+repository.Record(nextMonth, 60);
+Check("monthly files preserve older history", Directory.GetFiles(directory, "*.jsonl").Length == 2 && repository.ReadRange(start, nextMonth.FetchedAt).Count == 6);
+string blocked = Path.Combine(directory, "not-a-directory"); File.WriteAllText(blocked, "test");
+var unavailable = new HistoryRepository(blocked);
+Check("disk error reports failure without crashing live collection", !unavailable.Record(Sample(start, 1), 60) && unavailable.LastError != null);
+
+Check("read-all includes multiple months without date overflow", repository.ReadAll().Count == 6);
+string legacyOne = Path.Combine(directory, "legacy-one"), legacyTwo = Path.Combine(directory, "legacy-two"), shared = Path.Combine(directory, "shared");
+var oldStore = new HistoryRepository(Path.Combine(legacyOne, "history"));
+oldStore.Record(Sample(start, 1), 60); oldStore.Record(Sample(start.AddMinutes(1), 2), 60);
+var newStore = new HistoryRepository(Path.Combine(legacyTwo, "history"));
+newStore.Record(Sample(start.AddMinutes(1), 2), 60); newStore.Record(Sample(start.AddMinutes(2), 3), 60);
+string originalJournal = File.ReadAllText(Path.Combine(legacyOne, "history", "2026-09.jsonl"));
+File.WriteAllText(Path.Combine(legacyOne, "preferences.json"), System.Text.Json.JsonSerializer.Serialize(new Preferences { Compact = true, SkinId = "forest", HistoryRange = "7d" }));
+var merged = DataStorage.Migrate(shared, new[] { legacyOne, legacyTwo });
+Check("two launch profiles merge with exact timestamp deduplication", merged.Imported == 3 && merged.Total == 3);
+Check("old journals remain untouched", File.ReadAllText(Path.Combine(legacyOne, "history", "2026-09.jsonl")) == originalJournal);
+Check("preferences migrate with history", System.Text.Json.JsonSerializer.Deserialize<Preferences>(File.ReadAllText(Path.Combine(shared, "preferences.json")), Store.Json)!.SkinId == "forest");
+string sharedJournal = File.ReadAllText(Path.Combine(shared, "history", "2026-09.jsonl"));
+var again = DataStorage.Migrate(shared, new[] { legacyTwo, legacyOne });
+Check("restarting does not duplicate or rewrite existing history", again.Imported == 0 && again.Total == 3 && File.ReadAllText(Path.Combine(shared, "history", "2026-09.jsonl")) == sharedJournal);
+oldStore.Record(Sample(start.AddMinutes(4), 5), 60);
+var third = DataStorage.Migrate(shared, new[] { legacyOne, legacyTwo });
+Check("new legacy samples are imported on a later launch", third.Imported == 1 && third.Total == 4);
+Check("merged output is chronological", new HistoryRepository(Path.Combine(shared, "history")).ReadAll().Select(x => x.Time).SequenceEqual(new[] { start, start.AddMinutes(1), start.AddMinutes(2), start.AddMinutes(4) }));
+Check("rewritten target is backed up before merging", Directory.GetFiles(Path.Combine(shared, "migration-backups"), "2026-09.jsonl", SearchOption.AllDirectories).Length == 1);
+Check("default history range retains this month after restart", new Preferences().HistoryRange == "month");
+var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "all", HistoryChanges = true }))!;
+Check("selected history range and mode survive serialization", restoredView.HistoryRange == "all" && restoredView.HistoryChanges);
+Check("all-history range has no rolling cutoff", HistoryRanges.Start("all", start) == DateTimeOffset.MinValue);
+
+Console.WriteLine($"{passed} history checks passed.");
+
+namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

@@ -1,0 +1,32 @@
+<Window FontFamily="{DynamicResource SkinFont}" x:Class="CopilotPulse.HistoryWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:CopilotPulse" Title="Copilot Pulse · 用量历史" Width="960" Height="680" MinWidth="730" MinHeight="580" WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="{DynamicResource SkinText}" ResizeMode="CanResizeWithGrip" UseLayoutRounding="True">
+  <Border x:Name="HistorySurface" Margin="8" CornerRadius="21" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" Padding="0" Background="{DynamicResource SkinSurface}">
+    <Border x:Name="HistoryPhotoShade" CornerRadius="20" Padding="0">
+    <Grid>
+    <local:Atmosphere x:Name="HistoryAtmosphere" IsHitTestVisible="False"/>
+    <Grid Margin="28,22,28,22">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Grid Background="Transparent" MouseLeftButtonDown="DragHeader" Margin="0,0,0,24">
+        <StackPanel><TextBlock Text="COPILOT PULSE / HISTORY" FontSize="10" Foreground="{DynamicResource SkinAccent}" FontWeight="SemiBold"/><TextBlock Text="用量历史" FontSize="26" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><TextBlock x:Name="ConnectionLabel" Text="本机记录" VerticalAlignment="Center" Foreground="#7EBEAB" FontSize="11" Margin="0,0,18,0"/><Button x:Name="StorageButton" Content="历史文件夹 ↗" FontSize="10" Click="OpenStorage" Margin="0,0,8,0"/><Button Click="CloseHistory" ToolTip="关闭历史窗口" AutomationProperties.Name="关闭历史窗口"><Path Width="13" Height="13" Stroke="{DynamicResource SkinMuted}" StrokeThickness="1.6" Data="M1,1 L12,12 M12,1 L1,12"/></Button></StackPanel>
+      </Grid>
+      <Grid Grid.Row="1" Margin="0,0,0,22">
+        <StackPanel Orientation="Horizontal"><Button x:Name="SeriesButton" Content="总用量  ▾" Click="ChooseSeries" FontSize="12" Background="{DynamicResource SkinHover}" Foreground="{DynamicResource SkinText}" Padding="13,9" MaxWidth="340"/><TextBlock x:Name="PeriodLabel" Text="最近 24 小时" FontSize="12" Foreground="{DynamicResource SkinMuted}" Margin="14,0,0,0" VerticalAlignment="Center"/></StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="HoursButton" Content="24 小时" Tag="24h" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="WeekButton" Content="7 天" Tag="7d" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="MonthButton" Content="本月" Tag="month" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="AllButton" Content="全部" Tag="all" Click="ChangeRange" FontSize="12" Margin="2,0"/></StackPanel>
+      </Grid>
+      <Grid Grid.Row="2" Margin="0,0,0,24">
+        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="0.75*"/></Grid.ColumnDefinitions>
+        <StackPanel><TextBlock Text="区间最后读数" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="LatestValue" Text="—" FontSize="30" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Grid.Column="1"><TextBlock Text="区间净变化" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="NetValue" Text="—" FontSize="30" FontWeight="SemiBold" Foreground="#79D9BF" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Grid.Column="2"><TextBlock Text="成功采样" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="SampleCount" Text="0 次" FontSize="30" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
+      </Grid>
+      <Grid Grid.Row="3" Margin="0,0,0,10">
+        <StackPanel Orientation="Horizontal"><Button x:Name="CumulativeButton" Content="累计用量" Tag="cumulative" Click="ChangeMode" FontSize="11" Padding="10,6"/><Button x:Name="ChangesButton" Content="单次变化" Tag="changes" Click="ChangeMode" FontSize="11" Padding="10,6" Margin="5,0,0,0"/></StackPanel>
+        <TextBlock x:Name="CoverageLabel" Text="从首次记录开始积累" FontSize="10" Foreground="{DynamicResource SkinMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+      </Grid>
+      <Border Grid.Row="4" Background="{DynamicResource SkinChart}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="12" Padding="8,8,8,1" ClipToBounds="True"><local:HistoryChart x:Name="Chart" MinHeight="170"/></Border>
+      <StackPanel Grid.Row="5" Margin="0,15,0,0"><TextBlock x:Name="Footnote" Text="鼠标悬停查看读数 · 采样中断与跨月重置分段显示" FontSize="10" Foreground="{DynamicResource SkinMuted}" TextWrapping="Wrap"/><TextBlock x:Name="HistoryNotice" Text="记录仅保存在本机；安装前的历史无法补回。" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
+    </Grid>
+    </Grid>
+  </Border>
+  </Border>
+</Window>
