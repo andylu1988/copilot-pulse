@@ -141,7 +141,15 @@ public sealed record HistoryPoint(DateTimeOffset Time, decimal Value, decimal? D
 
 public static class HistoryMath
 {
-    private static string AccountSet(HistoryFrame f) => string.Join("|", f.Accounts.Select(a => a.Key).OrderBy(s => s, StringComparer.Ordinal));
+    // Accounts newly appearing or disappearing with zero cost do not change the total basis.
+    // Keep full identities: the same login can belong to multiple enterprises.
+    private static bool TotalBasisChanged(HistoryFrame previous, HistoryFrame current)
+    {
+        var before = previous.Accounts.ToDictionary(a => a.Key, a => a.Cost, StringComparer.Ordinal);
+        var after = current.Accounts.ToDictionary(a => a.Key, a => a.Cost, StringComparer.Ordinal);
+        return before.Any(a => !after.ContainsKey(a.Key) && a.Value != 0) ||
+               after.Any(a => !before.ContainsKey(a.Key) && a.Value != 0);
+    }
 
     public static IReadOnlyList<HistoryPoint> Series(IReadOnlyList<HistoryFrame> frames, string? key)
     {
@@ -155,7 +163,7 @@ public static class HistoryMath
             decimal value = key == null ? frame.Total : account!.Cost;
             double elapsed = previous == null ? 0 : (frame.Time - previous.Time).TotalSeconds;
             string reason = previous == null ? "起始记录" : frame.Period != previous.Period ? "新月份 · 累计值重新开始" :
-                key == null && AccountSet(frame) != AccountSet(previous) ? "企业账户集合变化" :
+                key == null && TotalBasisChanged(previous, frame) ? "企业账户集合变化" :
                 elapsed > Math.Max(180, Math.Max(frame.Cadence, previous.Cadence) * 3 + 30) ? "采样中断 · 不连接缺失区间" : "";
             result.Add(new HistoryPoint(frame.Time, value, reason.Length == 0 ? value - previousValue : null, reason.Length > 0, reason, frame.Period, elapsed));
             previous = frame;
@@ -164,9 +172,17 @@ public static class HistoryMath
         return result;
     }
 
+    public static string? NetChangeUnavailableReason(IReadOnlyList<HistoryPoint> points)
+    {
+        if (points.Count < 2) return "记录不足：需要至少两次读数。";
+        if (points.Select(p => p.Period).Distinct().Count() > 1) return "区间跨月：月累计值会重置，请选择单个月份内的区间。";
+        var changed = points.FirstOrDefault(p => p.Reason == "企业账户集合变化");
+        return changed == null ? null : $"{changed.Time.LocalDateTime:MM/dd HH:mm} 有非零金额企业加入或移出，合计口径改变，无法比较。";
+    }
+
     public static decimal? NetChange(IReadOnlyList<HistoryPoint> points)
     {
-        if (points.Count < 2 || points.Select(p => p.Period).Distinct().Count() > 1 || points.Any(p => p.Reason == "企业账户集合变化")) return null;
+        if (NetChangeUnavailableReason(points) != null) return null;
         return points[^1].Value - points[0].Value;
     }
 }

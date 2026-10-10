@@ -4,7 +4,7 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.9.6 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.9.7 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装](https://github.com/andylu1988/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -50,7 +50,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.6-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.7-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
@@ -98,7 +98,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 浏览器正常，组件未登录 | 浏览器与 WebView2 会话分别管理，请在组件中登录。 |
 | 刷新失败后金额不变 | 组件保留并标记上次成功读数，检查网络、会话与源页面后手动刷新。 |
 | 今天没有曲线 | 今天尚无有效采样；无法回补应用未运行的历史。 |
-| 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或企业集合改变。 |
+| 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或非零金额企业加入、移出；界面显示具体原因。零金额企业增减不影响计算。 |
 | 重启看不到旧记录 | 先选“全部”，用“历史文件夹”检查记录和目录权限。 |
 | 动画太强 | 降低强度 / 速度，或开启“减少动态效果”。 |
 

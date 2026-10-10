@@ -82,6 +82,8 @@ public partial class HistoryWindow : Window
         LatestValue.Text = points.Count > 0 ? points[^1].Value.ToString("C2", CultureInfo.GetCultureInfo("en-US")) : "—";
         decimal? net = HistoryMath.NetChange(points);
         NetValue.Text = net.HasValue ? HistoryChart.Signed(net.Value) : "—";
+        string? netReason = HistoryMath.NetChangeUnavailableReason(points);
+        NetValue.ToolTip = netReason ?? "末次读数减去首次读数；零金额企业增减不影响比较，负变化保留。";
         NetValue.Foreground = Brush(net < 0 ? "#F1B58B" : "#79D9BF");
         SampleCount.Text = points.Count.ToString("N0") + " 次";
         CoverageLabel.Text = points.Count > 0 ? $"实际记录 {points[0].Time.LocalDateTime:MM/dd HH:mm} — {points[^1].Time.LocalDateTime:MM/dd HH:mm}" : "从首次记录开始积累";
@@ -92,6 +94,8 @@ public partial class HistoryWindow : Window
         HistoryNotice.Text = demo != null ? "示例数据用于验证外观，不会写入你的历史文件。" : repository?.LastError ?? (
             points.Count == 0 ? "这个时间范围内没有记录。可点击“全部历史”查看以前保存的记录。" :
             $"最后记录 {points[^1].Time.LocalDateTime:MM/dd HH:mm:ss} · 数据仅保存在本机，不补造采集前的历史。");
+        if (net < 0) Footnote.Text = "净变化为负：区间记录可能包含源页面累计值归零或金额修正，不代表负消费。  " + Footnote.Text;
+        if (netReason != null) Footnote.Text = "净变化不可计算：" + netReason + "  " + Footnote.Text;
         if (demo == null && points.Count > 0)
         {
             bool recent = DateTimeOffset.Now - points[^1].Time < TimeSpan.FromMinutes(6);

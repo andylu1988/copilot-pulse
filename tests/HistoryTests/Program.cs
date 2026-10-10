@@ -98,6 +98,32 @@ var todaySamples = todayRepository.ReadRange(HistoryRanges.Start("today", todayN
 Check("today includes midnight and now but excludes yesterday and future samples", todaySamples.Count == 2 && todaySamples[0].Total == 2 && todaySamples[1].Total == 3);
 Check("today does not invent a midnight baseline", HistoryMath.Series(todaySamples.TakeLast(1).ToList(), null)[0].Delta == null);
 
+var membership = new[] { HistoryFrame.From(Sample(start, 10), 60), HistoryFrame.From(Sample(start.AddMinutes(1), 11), 60), HistoryFrame.From(Sample(start.AddMinutes(2), 12), 60) };
+membership[1].Accounts.Add(new HistoryAccount { Name = "Zero enterprise", Login = "test-user", Cost = 0 });
+Check("zero-cost addition with shared login retains continuous delta", HistoryMath.Series(membership, null)[1].Delta == 1);
+Check("zero-cost removal retains continuous delta", HistoryMath.Series(membership, null)[2].Delta == 1);
+Check("zero-cost membership changes preserve full range net", HistoryMath.NetChange(HistoryMath.Series(membership, null)) == 2);
+membership[1].Accounts[1].Cost = 5; membership[1].Total += 5;
+Check("nonzero enterprise addition suppresses net", HistoryMath.NetChange(HistoryMath.Series(membership.Take(2).ToArray(), null)) == null);
+Check("nonzero enterprise removal suppresses net", HistoryMath.NetChange(HistoryMath.Series(membership.Skip(1).ToArray(), null)) == null);
+Check("unavailable net explains nonzero membership change", HistoryMath.NetChangeUnavailableReason(HistoryMath.Series(membership, null))!.Contains("非零金额"));
+Check("single sample has explicit unavailable reason", HistoryMath.NetChangeUnavailableReason(series.Take(1).ToArray())!.Contains("记录不足"));
+Check("cross month has explicit unavailable reason", HistoryMath.NetChangeUnavailableReason(HistoryMath.Series(rollover, null))!.Contains("跨月"));
+Check("real account replacement still suppresses net", HistoryMath.NetChange(HistoryMath.Series(missing, null)) == null);
+Check("account ordering does not change comparability", HistoryMath.NetChange(HistoryMath.Series(new[] {membership[1], new HistoryFrame { Time = start.AddMinutes(3), Period = membership[1].Period, Total = membership[1].Total, Accounts = membership[1].Accounts.AsEnumerable().Reverse().ToList() }}, null)) == 0);
+
+if (args.Length > 1)
+{
+    var real = new HistoryRepository(args[1]);
+    var replayNow = new DateTimeOffset(2026, 10, 10, 16, 23, 0, TimeSpan.FromHours(8));
+    foreach (string range in new[] { "today", "24h", "7d", "month", "all" })
+    {
+        var replay = HistoryMath.Series(real.ReadRange(HistoryRanges.Start(range, replayNow), replayNow), null);
+        var value = HistoryMath.NetChange(replay);
+        Check("saved history replay " + range, range == "all" ? value == null : value == replay[^1].Value - replay[0].Value);
+        Console.WriteLine($"REPLAY {range}: {replay.Count} samples, net={value}, reason={HistoryMath.NetChangeUnavailableReason(replay)}");
+    }
+}
 Console.WriteLine($"{passed} history checks passed.");
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

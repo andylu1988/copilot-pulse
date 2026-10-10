@@ -46,7 +46,7 @@ public partial class MainWindow
             var points = HistoryMath.Series(frames, null);
             decimal? net = HistoryMath.NetChange(points);
             HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 {(net.HasValue ? HistoryChart.Signed(net.Value) : "—")}";
-            HistoryNetGrowth.ToolTip = net.HasValue ? "所选区间总用量的末次读数减去首次读数；未采集时段不补算。" : "记录不足、跨月重置或账户集合变化时，无法计算区间净增长。";
+            HistoryNetGrowth.ToolTip = net.HasValue ? "所选区间总用量的末次读数减去首次读数；未采集时段不补算。负变化可能包含源页面累计值归零或金额修正，不代表负消费。" : HistoryMath.NetChangeUnavailableReason(points);
             miniHistoryUpdated = now;
             MiniHistory.SetData(points, from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
             HistorySummary.Text = App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开";
