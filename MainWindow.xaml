@@ -1,13 +1,13 @@
 <Window x:Class="CopilotPulse.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:CopilotPulse" Title="Copilot Pulse" Foreground="{DynamicResource SkinText}" Width="408" SizeToContent="Height" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" FontFamily="{DynamicResource SkinFont}" UseLayoutRounding="True" ShowInTaskbar="False">
   <Grid>
   <ScrollViewer x:Name="FullView" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-  <Border x:Name="Surface" Margin="10" CornerRadius="24" BorderThickness="1" BorderBrush="{DynamicResource SkinEdge}" Padding="0">
+  <Border x:Name="Surface" MouseLeftButtonDown="DragHeader" Margin="10" CornerRadius="24" BorderThickness="1" BorderBrush="{DynamicResource SkinEdge}" Padding="0">
     <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.4"/></Border.Effect>
     <Border x:Name="PhotoShade" CornerRadius="23" Padding="0">
     <Grid>
     <local:Atmosphere x:Name="FullAtmosphere" IsHitTestVisible="False"/>
     <StackPanel x:Name="ContentStack" Margin="23,19,23,18">
-      <Grid Margin="0,0,0,27" MouseLeftButtonDown="DragHeader" Background="Transparent">
+      <Grid Margin="0,0,0,27" Background="Transparent">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource SkinHover}" Margin="0,0,10,0"><Path Width="19" Height="19" Stretch="Uniform" Fill="{DynamicResource SkinAccent}" Data="M12,0 L15,8 L23,11 L15,14 L12,22 L9,14 L1,11 L9,8 Z"/></Border>
@@ -39,6 +39,7 @@
         </Border>
         <TextBlock Text="Monthly limit 为使用上限，不代表预算。" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="1,4,0,0"/>
       </StackPanel>
+      <Border x:Name="WarningBox" Visibility="Collapsed" CornerRadius="9" Background="{DynamicResource SkinHover}" Padding="10,9" Margin="0,12,0,0"><TextBlock x:Name="WarningText" Foreground="{DynamicResource SkinAccent}" FontSize="11" TextWrapping="Wrap"/></Border>
       <Border x:Name="AlertBox" Visibility="Collapsed" CornerRadius="9" Background="#352D23" Padding="10,9" Margin="0,15,0,0"><TextBlock x:Name="AlertText" Foreground="#EAC58D" FontSize="11" TextWrapping="Wrap" LineHeight="18"/></Border>
       <Border Height="1" Background="{DynamicResource SkinEdge}" Margin="0,21,0,14"/>
       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

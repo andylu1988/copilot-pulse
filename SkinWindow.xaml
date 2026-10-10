@@ -20,10 +20,10 @@
       </ControlTemplate></Setter.Value></Setter>
     </Style>
   </Window.Resources>
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <ScrollViewer MouseLeftButtonDown="DragHeader" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
   <Border Margin="8" Background="{DynamicResource SkinSurface}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="20" Padding="25,22">
     <StackPanel>
-      <Grid Background="Transparent" MouseLeftButtonDown="DragHeader" Margin="0,0,0,19">
+      <Grid Background="Transparent" Margin="0,0,0,19">
         <StackPanel><TextBlock Text="COPILOT PULSE / APPEARANCE" Foreground="{DynamicResource SkinAccent}" FontSize="10" FontWeight="SemiBold"/><TextBlock Text="换一个心情" FontSize="25" FontWeight="SemiBold" Margin="0,5,0,0"/><TextBlock Text="选择即生效 · 组件和历史窗口同步切换" Foreground="{DynamicResource SkinMuted}" FontSize="11" Margin="0,6,0,0"/></StackPanel>
         <Button Click="ClosePicker" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="关闭换肤窗口"><Path Width="12" Height="12" Stroke="{DynamicResource SkinMuted}" StrokeThickness="1.6" Data="M1,1 L11,11 M11,1 L1,11"/></Button>
       </Grid>

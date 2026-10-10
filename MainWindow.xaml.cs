@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -35,7 +35,8 @@ public partial class MainWindow : Window
         Icon = BrandIcon.Window;
         MaxHeight = SystemParameters.WorkArea.Height;
         preferences = App.Demo || App.Smoke ? new Preferences() : Store.Read<Preferences>("preferences.json") ?? new Preferences();
-        if (preferences.RefreshSeconds is not (30 or 60 or 300)) preferences.RefreshSeconds = 60;
+        SettingsPolicy.Normalize(preferences);
+        UiText.Language = preferences.Language;
         Topmost = preferences.Topmost;
         PinButton.Foreground = Brush(Topmost ? "#83D6EC" : "#7186A6");
         if (App.StartSkin != null) preferences.SkinId = SkinTheme.Find(App.StartSkin).Id;
@@ -43,12 +44,14 @@ public partial class MainWindow : Window
         Surface.SizeChanged += (_, _) => ApplyPhotoBackground();
         InitializeSkin();
         InitializeDisplayMode();
+        UiText.Apply(this);
         Loaded += LoadedAsync;
         Closing += (_, _) =>
         {
             closing = true;
             timer.Stop();
             skinWindow?.Close();
+            settingsWindow?.Close();
             skinSaveTimer.Stop();
             historyWindow?.Close();
             if (history != null) history.Changed -= HistoryChanged;
@@ -77,6 +80,7 @@ public partial class MainWindow : Window
                 }
             });
             SetStatus("demo");
+            if(App.SettingsReviewPath != null) { await ReviewSettingsAsync(App.SettingsReviewPath); Close(); return; }
             if(App.MiniReviewPath != null) { await ReviewMiniAsync(App.MiniReviewPath); Close(); return; }
             if (App.SkinReviewPath != null) { await ReviewSkinsAsync(App.SkinReviewPath); Close(); return; }
             if (App.HistoryReviewPath != null) { await ReviewHistoryAsync(App.HistoryReviewPath); Close(); return; }
@@ -91,7 +95,7 @@ public partial class MainWindow : Window
             if (cached?.Ok == true && cached.Accounts.Count > 0) { RecordHistory(cached); RenderData(cached); SetStatus("cached"); }
         }
         monitor = new SourceMonitor();
-        monitor.Received += d => { if (closing) return; RecordHistory(d); RenderData(d); if (!App.Smoke) Store.Write("consumption.json", d); };
+        monitor.Received += d => { if (closing) return; RecordHistory(d); RenderData(d); EvaluateWarning(true); if (!App.Smoke) Store.Write("consumption.json", d); };
         monitor.Status += s => { if (!closing) SetStatus(s); };
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         timer.Tick += Tick;
@@ -130,6 +134,8 @@ public partial class MainWindow : Window
         EmptyState.Visibility = Visibility.Collapsed;
         AccountCards.Children.Clear();
         for (int i = 0; i < data.Accounts.Count; i++) AccountCards.Children.Add(CreateCard(data.Accounts[i], i));
+        EvaluateWarning(false);
+        UiText.Apply(this);
         UpdateTimestamp();
     }
 
@@ -197,21 +203,24 @@ public partial class MainWindow : Window
         if (data != null && value is "login" or "network" or "layout" or "cached") notice = (notice + " 当前显示上次成功同步的数据。").Trim();
         AlertText.Text = notice;
         AlertBox.Visibility = notice.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        UiText.Apply(this);
         UpdateTimestamp();
     }
 
     private void UpdateTimestamp()
     {
         RefreshNumericState();
-        if (data == null) { UpdateLabel.Text = "尚未同步"; return; }
+        if (data == null) { UpdateLabel.Text = UiText.Translate("尚未同步"); return; }
         string time = data.FetchedAt.ToLocalTime().ToString(data.FetchedAt.LocalDateTime.Date == DateTime.Now.Date ? "HH:mm:ss" : "MM/dd HH:mm", Us);
         UpdateLabel.Text = App.Demo ? "虚构示例 · 自动刷新未连接" : $"更新于 {time}";
         if (status == "live" && !paused) UpdateLabel.Text += $" · {Math.Max(0, (int)(nextRefresh - DateTimeOffset.Now).TotalSeconds)}s";
         if (paused) UpdateLabel.Text += " · 自动刷新已暂停";
+        UpdateLabel.Text = UiText.Translate(UpdateLabel.Text);
     }
 
     private async void Tick(object? sender, EventArgs e)
     {
+        CheckSystemZone();
         UpdateTimestamp();
         if (!closing && DateTimeOffset.Now - miniHistoryUpdated >= TimeSpan.FromMinutes(1)) { miniHistoryUpdated = DateTimeOffset.Now; await RefreshMiniHistoryAsync(); }
         if (paused || status == "syncing" || DateTimeOffset.Now < nextRefresh || closing) return;
@@ -223,9 +232,7 @@ public partial class MainWindow : Window
     private void OpenSource(object sender, RoutedEventArgs e) { if (!App.Demo) monitor?.ShowLogin(); }
     private void DragHeader(object sender, MouseButtonEventArgs e)
     {
-        DependencyObject? source = e.OriginalSource as DependencyObject;
-        while (source != null) { if (source is Button) return; source = VisualTreeHelper.GetParent(source); }
-        if (e.LeftButton == MouseButtonState.Pressed) { DragMove(); SavePreferences(); }
+        if (WindowDrag.TryMove(this, e)) SavePreferences();
     }
     private void TogglePin(object sender, RoutedEventArgs e) { Topmost = !Topmost; preferences.Topmost = Topmost; PinButton.Foreground = Brush(Topmost ? "#83D6EC" : "#7186A6"); SavePreferences(); }
     private void HideToTray(object sender, RoutedEventArgs e) { if (tray == null) Close(); else Hide(); }
@@ -234,13 +241,14 @@ public partial class MainWindow : Window
     private ContextMenu BuildSettingsMenu()
     {
         var menu = new ContextMenu();
+        var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
         menu.Items.Add(BuildDisplayModeMenu());
         menu.Items.Add(BuildSkinMenu());
         var motion = new MenuItem { Header = "减少动态效果", IsCheckable = true, IsChecked = preferences.ReduceMotion };
         motion.Click += (_,_) => { preferences.ReduceMotion=motion.IsChecked; SkinEdited(); skinWindow?.RefreshSelection(); }; menu.Items.Add(motion);
         var pin = new MenuItem { Header = "始终置顶", IsCheckable = true, IsChecked = Topmost }; pin.Click += TogglePin; menu.Items.Add(pin);
         var refresh = new MenuItem { Header = "自动刷新间隔" };
-        foreach (int seconds in new[] { 30, 60, 300 })
+        foreach (int seconds in SettingsPolicy.RefreshOptions)
         {
             var item = new MenuItem { Header = seconds == 300 ? "5 分钟" : $"{seconds} 秒", IsCheckable = true, IsChecked = preferences.RefreshSeconds == seconds };
             item.Click += (_, _) => { preferences.RefreshSeconds = seconds; nextRefresh = DateTimeOffset.Now.AddSeconds(seconds); if (status == "live") SetStatus("live"); SavePreferences(); };
@@ -255,6 +263,7 @@ public partial class MainWindow : Window
         var open = new MenuItem { Header = "Windows 账户登录 / 数据源" }; open.Click += OpenSource; menu.Items.Add(open);
         var browser = new MenuItem { Header = "在系统浏览器打开页面" }; browser.Click += (_, _) => OpenSystemBrowser(); menu.Items.Add(browser);
         var exit = new MenuItem { Header = "退出 Copilot Pulse" }; exit.Click += (_, _) => Close(); menu.Items.Add(exit);
+        UiText.Apply(menu);
         return menu;
     }
 
@@ -282,6 +291,7 @@ public partial class MainWindow : Window
     private Forms.ContextMenuStrip BuildTrayMenu()
     {
         var menu = new Forms.ContextMenuStrip { Renderer = new DarkTrayRenderer(), BackColor = DarkTrayRenderer.Surface, ForeColor = DarkTrayRenderer.Text, Font = new System.Drawing.Font("Segoe UI", 9.5f), Padding = new Forms.Padding(4, 5, 4, 5), ShowImageMargin = false };
+        menu.Items.Add(UiText.Translate("设置…"), null, (_, _) => Dispatcher.Invoke(OpenPreferences));
         menu.Items.Add("显示小组件", null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); }));
         menu.Items.Add("迷你数字模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("mini")));
         menu.Items.Add("展开完整模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("full")));
@@ -292,7 +302,7 @@ public partial class MainWindow : Window
         menu.Items.Add("在系统浏览器打开页面", null, (_, _) => Dispatcher.Invoke(OpenSystemBrowser));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出", null, (_, _) => Dispatcher.Invoke(Close));
-        foreach (Forms.ToolStripItem item in menu.Items) if (item is not Forms.ToolStripSeparator) item.Padding = new Forms.Padding(12, 7, 12, 7);
+        foreach (Forms.ToolStripItem item in menu.Items) if (item is not Forms.ToolStripSeparator) { item.Padding = new Forms.Padding(12, 7, 12, 7); item.Text = UiText.Translate(item.Text ?? ""); }
         return menu;
     }
 

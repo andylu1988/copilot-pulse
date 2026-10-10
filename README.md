@@ -1,10 +1,10 @@
-# Copilot Pulse
+﻿# Copilot Pulse
 
 **把 Copilot 用量放在桌面上，让每一次增长都看得见。**
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.9.8 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.9.9 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -16,7 +16,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 | 功能 | 使用体验 |
 | --- | --- |
-| 自动刷新 | 默认每 60 秒读取页面，可选 30 秒或 5 分钟，支持手动刷新和暂停。 |
+| 自动刷新 | 默认每 60 秒读取页面，可选 15/30/60/120/300/600 秒，支持手动刷新和暂停。 |
 | 用量总览 | 显示本月累计金额、企业明细、用量比例和 Monthly limit。 |
 | 三种模式 | 完整模式看明细，紧凑模式看金额与趋势，迷你模式突出一个数字。 |
 | 历史趋势 | 今天、24 小时、7 天、本月、指定月份；支持总用量与单个企业。 |
@@ -50,7 +50,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.8-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.9-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
@@ -73,6 +73,25 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ![UTC 本月趋势与月份选择入口，示例数据](docs/screenshots/history-month-utc.png)
 
+## 偏好设置（v1.9.9）
+
+点击主卡片 **⋯ → 设置…**，或右键迷你框 / 托盘图标 → 设置，打开独立设置窗口。选择立即生效并保存；阈值输入后点击“应用”或按 Enter。
+
+| 设置 | 可选内容 |
+| --- | --- |
+| 语言 | 简体中文 / English，主卡片、历史、换肤与菜单同步切换。 |
+| 数据刷新 | 15、30、60、120、300、600 秒；默认 60 秒。 |
+| 动画帧率 | 10、15、20、30、60 FPS；默认 20 FPS，也可减少动态效果。 |
+| 用量警告 | 默认关闭；开启后显示卡片提示，并在成功同步时发出 Windows 通知。 |
+| 警告阈值 | 各账户配额百分比 1–100%，或本月合计金额 $0.01–$1,000,000,000。 |
+| 时间与链接 | 显示 Windows 系统时区、下次 UTC 月初重置对应的本机时间，提供用量网页和文档入口。 |
+
+未提供具体数字限额的账户不计算百分比警告，可使用金额警告。本次运行中，每个账户在相同 UTC 配额月份和阈值下提醒一次；重启或修改阈值后可再次提醒。系统通知是否显示受 Windows 通知设置影响。
+
+窗口背景、标题、普通文字和金额区域均可拖动；按钮、输入框、滑块和图表继续响应原有操作。Windows 更改时区后，应用会在一分钟内重新读取；“今天”按本机午夜，配额月份按 UTC 00:00。
+
+<table><tr><th>中文</th><th>English</th></tr><tr><td><img src="docs/screenshots/settings-zh.png" width="380" alt="中文偏好设置"></td><td><img src="docs/screenshots/settings-en.png" width="380" alt="English preferences"></td></tr></table>
+
 ## 日常操作
 
 | 想做什么 | 怎么操作 |
@@ -81,7 +100,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 恢复大卡片 | 双击迷你框；右键可打开设置。 |
 | 看当天增长 | 打开历史选择“今天”；主卡片净增长同步改为今天。 |
 | 看单个企业 | 历史窗口左上角选择企业；主卡片净增长始终按总用量计算。 |
-| 改刷新频率 | 设置 → 自动刷新间隔；底部刷新按钮立即读取。 |
+| 改刷新频率 | ⋯ → 设置 → 数据刷新频率；底部刷新按钮立即读取。 |
 | 换外观 | 点击“换肤”，选择即生效，主卡片与历史窗口同步切换。 |
 | 降低动画 | 开启“减少动态效果”，或在换肤界面关闭动态效果。 |
 | 收起 / 退出 | 最小化收起到托盘，双击托盘图标恢复；托盘菜单退出。 |
@@ -152,3 +171,10 @@ dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-
 Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. Access to this private repository and the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
 
 All screenshots use **synthetic accounts and usage**, rendered with actual v1.9.6 controls. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.
+### Preferences in v1.9.9
+
+Open **⋯ → Settings…**, or right-click the mini widget / tray icon. Choose Chinese or English, a 15/30/60/120/300/600-second refresh interval, and 10/15/20/30/60 FPS. Settings apply immediately and persist locally. Thresholds require Apply or Enter.
+
+Warnings are disabled by default. Choose a per-account numeric quota percentage (1–100%) or monthly total amount ($0.01–$1,000,000,000). Unknown quotas do not trigger percentage warnings. During each app session, each account/threshold warns once per UTC quota month; restarting permits another notification. Windows notification settings apply.
+
+Windows timezone and the next UTC month reset in local time are displayed in Preferences. Today starts at local midnight; monthly quota periods start at UTC midnight. Drag ordinary text, amounts or background areas to move windows. Links open the usage page and guides in your default browser.

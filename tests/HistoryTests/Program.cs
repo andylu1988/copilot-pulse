@@ -1,4 +1,4 @@
-using CopilotPulse;
+﻿using CopilotPulse;
 
 string directory = Path.Combine(Path.GetFullPath(args[0]), "run-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(directory);
@@ -141,5 +141,30 @@ if (args.Length > 1)
     }
 }
 Console.WriteLine($"{passed} history checks passed.");
+
+
+
+var options = new Preferences { RefreshSeconds = 120, AnimationFps = 60, Language = "en", WarningEnabled = true };
+SettingsPolicy.Normalize(options);
+Check("new settings cadence FPS language retained", options.RefreshSeconds == 120 && options.AnimationFps == 60 && options.Language == "en");
+var badOptions = new Preferences { RefreshSeconds = 1, AnimationFps = 0, Language = "invalid", WarningPercent = 101, WarningAmount = -1 };
+SettingsPolicy.Normalize(badOptions);
+Check("invalid settings normalized", badOptions.RefreshSeconds == 60 && badOptions.AnimationFps == 20 && badOptions.Language == "zh-CN" && badOptions.WarningPercent == 100 && badOptions.WarningAmount == .01m);
+var warns = new UsageWarnings();
+var warningSample = new Consumption { Ok = true, Total = 80, FetchedAt = DateTimeOffset.Now, Accounts = new() { new Account { Name = "known", Cost = 80, Limit = 100 }, new Account { Name = "unknown", Cost = 10000, Limit = null, Percent = 99 } } };
+Check("known quota threshold inclusive unknown quota ignored", warns.Active(warningSample, options).SequenceEqual(new[] { "known\n" }));
+Check("first threshold crossing notifies", warns.ShouldNotify(warningSample, options));
+Check("repeat refresh does not notify", !warns.ShouldNotify(warningSample, options));
+options.WarningPercent = 90;
+Check("below threshold does not notify", !warns.ShouldNotify(warningSample, options));
+options.WarningMode = "amount"; options.WarningAmount = 80;
+Check("absolute amount threshold includes equality", warns.ShouldNotify(warningSample, options));
+options.WarningEnabled = false;
+Check("disabled warnings silent", warns.Active(warningSample, options).Count == 0 && !warns.ShouldNotify(warningSample, options));
+options.WarningEnabled = true; warningSample.FetchedAt = DateTimeOffset.Now.AddMonths(-1);
+Check("stale quota month does not warn", warns.Active(warningSample, options).Count == 0);
+var persistedOptions = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(options))!;
+Check("settings serialize and restore", persistedOptions.Language == "en" && persistedOptions.AnimationFps == 60 && persistedOptions.WarningAmount == 80);
+Console.WriteLine($"FINAL {passed} checks passed");
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

@@ -1,6 +1,6 @@
-Copilot Pulse 1.9.8 · Windows 安装版
+﻿Copilot Pulse 1.9.9 · Windows 安装版
 
-安装：双击 CopilotPulse-Setup-1.9.8-x64.exe，按提示完成安装。
+安装：双击 CopilotPulse-Setup-1.9.9-x64.exe，按提示完成安装。
 支持 Windows 10（1809 或更新）/11 x64。默认按当前用户安装，不需要管理员权限。
 自带 .NET 运行环境；若电脑缺少 WebView2，安装程序会使用微软官方引导程序联网安装。
 桌面快捷方式可在安装过程中选择，开始菜单中也能打开组件。
@@ -25,3 +25,6 @@ Copilot Pulse 1.9.8 · Windows 安装版
 分享：只需发送安装 EXE；本文件可一起发给对方。
 安装包不包含个人历史、用量、Cookie、密码或 API Key。美术资源已嵌入，运行不需要图像服务配置。
 此安装包尚未使用企业代码签名证书签名；若公司应用策略要求签名，需要由公司认可的渠道签名或分发。
+
+偏好设置：主卡片 ⋯ → 设置，或迷你框/托盘右键 → 设置。支持中英文、15–600 秒刷新、10–60 FPS 动画、百分比/金额警告、系统时区和网页链接。阈值点击应用保存，其余选择立即保存。可从背景、普通文字或金额区域拖动窗口。
+Preferences: open Settings from the widget or tray menu. Chinese/English, refresh interval, animation FPS, usage warnings, local timezone and web links are available.

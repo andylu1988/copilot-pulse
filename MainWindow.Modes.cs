@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -52,10 +52,10 @@ public partial class MainWindow
     private void ExpandMini(object sender,RoutedEventArgs e)=>SetDisplayMode("full");
     private MenuItem BuildDisplayModeMenu()
     {
-        var menu=new MenuItem {Header="显示模式"};
+        var menu=new MenuItem {Header=UiText.Translate("显示模式")};
         foreach(string mode in new[]{"mini","compact","full"})
         {
-            var item=new MenuItem {Header=DisplayModes.Label(mode),IsCheckable=true,IsChecked=preferences.DisplayMode==mode};
+            var item=new MenuItem {Header=UiText.Translate(DisplayModes.Label(mode)),IsCheckable=true,IsChecked=preferences.DisplayMode==mode};
             item.Click+=(_,_)=>SetDisplayMode(mode);menu.Items.Add(item);
         }
         return menu;
@@ -87,7 +87,7 @@ public partial class MainWindow
         MiniTools.Visibility=Visibility.Visible;
         MiniTools.BeginAnimation(OpacityProperty,null);
         if(preferences.ReduceMotion||!SystemParameters.ClientAreaAnimation)MiniTools.Opacity=1;
-        else MiniTools.BeginAnimation(OpacityProperty,new DoubleAnimation(1,TimeSpan.FromMilliseconds(150)));
+        else { var fade = new DoubleAnimation(1,TimeSpan.FromMilliseconds(150)); Timeline.SetDesiredFrameRate(fade, preferences.AnimationFps); MiniTools.BeginAnimation(OpacityProperty,fade); }
     }
     private void MiniLeave(object sender,MouseEventArgs e)
     {
@@ -95,6 +95,7 @@ public partial class MainWindow
         MiniTools.BeginAnimation(OpacityProperty,null); MiniTools.Opacity=opacity;
         if(preferences.ReduceMotion||!SystemParameters.ClientAreaAnimation){MiniTools.Visibility=Visibility.Collapsed;return;}
         var fade=new DoubleAnimation(0,TimeSpan.FromMilliseconds(140));
+        Timeline.SetDesiredFrameRate(fade, preferences.AnimationFps);
         fade.Completed+=(_,_)=>{if(!MiniHost.IsMouseOver)MiniTools.Visibility=Visibility.Collapsed;};
         MiniTools.BeginAnimation(OpacityProperty,fade);
     }

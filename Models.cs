@@ -44,6 +44,12 @@ public sealed class Preferences
     public string HistoryRange { get; set; } = "month";
     public bool HistoryChanges { get; set; }
     public int RefreshSeconds { get; set; } = 60;
+    public string Language { get; set; } = "zh-CN";
+    public int AnimationFps { get; set; } = 20;
+    public bool WarningEnabled { get; set; }
+    public string WarningMode { get; set; } = "percent";
+    public decimal WarningPercent { get; set; } = 80;
+    public decimal WarningAmount { get; set; } = 1000;
     public double Left { get; set; } = -1;
     public double Top { get; set; } = -1;
 }

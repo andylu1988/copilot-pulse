@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -70,7 +70,7 @@ public sealed class HistoryChart : FrameworkElement
         {
             if (!Mini)
             {
-                string message = points.Count > 0 ? "下一次连续刷新后，将显示单次变化" : "正在积累真实记录";
+                string message = UiText.Translate(points.Count > 0 ? "下一次连续刷新后，将显示单次变化" : "正在积累真实记录");
                 var label = Label(message, 14, "#879FBE");
                 dc.DrawText(label, new Point(Math.Max(8, (ActualWidth - label.Width) / 2), ActualHeight / 2 - 12));
             }
@@ -163,7 +163,7 @@ public sealed class HistoryChart : FrameworkElement
             string delta = point.Delta.HasValue ? $"较上次 {Signed(point.Delta.Value)} · 间隔 {point.IntervalSeconds / 60:0.#} 分钟" : point.Reason;
             var first = Label(point.Time.ToLocalTime().ToString("MM/dd HH:mm:ss", Us), 11, "#A9BDD6");
             var second = Label(amount.HasValue ? (Changes ? Signed(amount.Value) : amount.Value.ToString("C2", Us)) : "—", 20, "#EFF8FF");
-            var third = Label(delta, 10, "#91AAC9");
+            var third = Label(UiText.Translate(delta), 10, "#91AAC9");
             double width = Math.Max(210, third.Width + 26), left = Math.Clamp(x + 14, 5, Math.Max(5, ActualWidth - width - 6));
             var box = new Rect(left, 5, width, 90);
             dc.DrawRoundedRectangle(Brush("#21334C"), new Pen(Brush("#4B6687"), 1), box, 9, 9);

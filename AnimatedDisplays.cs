@@ -36,7 +36,8 @@ public abstract class AnimatedDisplay : FrameworkElement
     }
     private bool ShouldAnimate => IsLoaded && IsVisible && MotionAllowed && (HasAmbient || Pulse>0);
     private void SystemChanged(object? sender,PropertyChangedEventArgs e) { if(e.PropertyName is nameof(SystemParameters.ClientAreaAnimation) or nameof(SystemParameters.HighContrast)) Dispatcher.Invoke(RefreshAppearance); }
-    internal void RefreshAppearance() { if(ShouldAnimate)animation.Start();else animation.Stop(); InvalidateVisual(); }
+    internal double AnimationIntervalMs => animation.Interval.TotalMilliseconds;
+    internal void RefreshAppearance() { animation.Interval = TimeSpan.FromMilliseconds(1000.0 / SkinTheme.Settings.AnimationFps); if(ShouldAnimate)animation.Start();else animation.Stop(); InvalidateVisual(); }
     protected void Flash() { pulseStarted=clock.Elapsed.TotalSeconds;RefreshAppearance(); }
     internal void PaintReviewFrame(double time) { ReviewTime=time;InvalidateVisual(); }
 }
@@ -63,15 +64,15 @@ public sealed partial class MoneyReadout : AnimatedDisplay
         bool changed=amount!=value, different=changed||state!=status||updated!=time;
         if(changed && amount.HasValue && value.HasValue && Palette.Id!="eink")Flash();
         amount=value;state=status;updated=time;
-        if(different)
+        if(different || UiText.English)
         {
             string display=amount?.ToString("C2",DisplayArt.Us)??"尚未同步";
-            AutomationProperties.SetName(this,(Preview || App.Demo ? "示例金额 " : "本月内部用量 ")+display);
-            if(Tile)ToolTip=$"本月内部用量：{display}\n最近更新：{(time.HasValue?time.Value.LocalDateTime.ToString("MM/dd HH:mm:ss"):"尚无记录")}\n{StateLabel()}\n拖动移动 · 双击展开 · 右键设置";
+            AutomationProperties.SetName(this,UiText.Translate((Preview || App.Demo ? "示例金额 " : "本月内部用量 ")+display));
+            if(Tile)ToolTip=UiText.Translate($"本月内部用量：{display}\n最近更新：{(time.HasValue?time.Value.LocalDateTime.ToString("MM/dd HH:mm:ss"):"尚无记录")}\n{StateLabel()}\n拖动移动 · 双击展开 · 右键设置");
             InvalidateVisual();
         }
     }
-    private string StateLabel()=>state switch { "live"=>"已同步", "syncing"=>"正在同步", "demo"=>"示例", "paused"=>"已暂停", "login"=>"需要登录", "network" or "layout" or "cached" or "stale" or "runtime"=>"缓存 · 待更新", _=>"等待连接" };
+    private string StateLabel()=>UiText.Translate(state switch { "live"=>"已同步", "syncing"=>"正在同步", "demo"=>"示例", "paused"=>"已暂停", "login"=>"需要登录", "network" or "layout" or "cached" or "stale" or "runtime"=>"缓存 · 待更新", _=>"等待连接" });
     protected override AutomationPeer OnCreateAutomationPeer()=>new MoneyPeer(this);
     private sealed class MoneyPeer : FrameworkElementAutomationPeer { internal MoneyPeer(MoneyReadout owner):base(owner){} protected override AutomationControlType GetAutomationControlTypeCore()=>AutomationControlType.Text; }
     protected override void OnRender(DrawingContext dc)

@@ -58,6 +58,7 @@ internal static class SkinTheme
     internal static SkinPalette Find(string? id) => Catalog.FirstOrDefault(s => s.Id == id) ?? Catalog.First(s => s.Id == "midnight");
     internal static void Normalize(Preferences p)
     {
+        SettingsPolicy.Normalize(p);
         p.SkinId = string.IsNullOrEmpty(p.SkinId) ? p.PhotoBackground ? "bayi" : "midnight" : Find(p.SkinId).Id;
         p.EffectIntensity = double.IsFinite(p.EffectIntensity) ? Math.Clamp(p.EffectIntensity, .35, 1.5) : 1;
         p.EffectSpeed = double.IsFinite(p.EffectSpeed) ? Math.Clamp(p.EffectSpeed, .5, 1.5) : 1;

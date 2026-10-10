@@ -23,6 +23,7 @@ public partial class App : Application
     public static string? SkinReviewPath { get; private set; }
     public static bool MiniAtStartup { get; private set; }
     public static string? StartSkin { get; private set; }
+    public static string? SettingsReviewPath { get; private set; }
     public static string? MiniReviewPath { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -36,6 +37,8 @@ public partial class App : Application
         MiniAtStartup = Array.IndexOf(e.Args, "--mini") >= 0;
         int skin = Array.IndexOf(e.Args, "--skin");
         if(skin>=0 && skin+1<e.Args.Length) StartSkin=e.Args[skin+1];
+        int settingsReview = Array.IndexOf(e.Args, "--review-settings");
+        if(settingsReview >= 0 && settingsReview + 1 < e.Args.Length) { SettingsReviewPath = Path.GetFullPath(e.Args[settingsReview + 1]); Demo = true; }
         int miniReview=Array.IndexOf(e.Args,"--review-mini");
         if(miniReview>=0 && miniReview+1<e.Args.Length) {MiniReviewPath=Path.GetFullPath(e.Args[miniReview+1]);Demo=true;}
         int skinReview = Array.IndexOf(e.Args, "--review-skins");
@@ -63,7 +66,7 @@ public partial class App : Application
         {
             if (Demo)
             {
-                string? review = MiniReviewPath ?? SkinReviewPath ?? HistoryReviewPath ?? MenuReviewPath;
+                string? review = SettingsReviewPath ?? MiniReviewPath ?? SkinReviewPath ?? HistoryReviewPath ?? MenuReviewPath;
                 if (review != null) { Directory.CreateDirectory(review); File.WriteAllText(Path.Combine(review,"review-error.txt"),args.Exception.ToString()); }
                 args.Handled = true; Shutdown(1); return;
             }

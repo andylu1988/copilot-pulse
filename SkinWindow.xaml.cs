@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +25,7 @@ public partial class SkinWindow : Window
         MaxHeight = SystemParameters.WorkArea.Height;
         BuildTiles();
         RefreshSelection();
+        UiText.Apply(this);
         updating = false;
     }
 
@@ -64,6 +65,7 @@ public partial class SkinWindow : Window
         foreach (var tile in tiles)
         {
             tile.Border.SetResourceReference(Border.BorderBrushProperty, tile.Id == preferences.SkinId ? "SkinAccent" : "SkinEdge");
+            if (tile.Border.Child is Button tileButton && tileButton.Content is StackPanel tilePanel && tilePanel.Children[0] is MoneyReadout tilePreview) tilePreview.RefreshAppearance();
             tile.Check.Visibility = tile.Id == preferences.SkinId ? Visibility.Visible : Visibility.Collapsed;
         }
         DimSlider.Value = preferences.PhotoDim * 100;
@@ -75,6 +77,7 @@ public partial class SkinWindow : Window
         DimValue.Text = $"{preferences.PhotoDim:P0}";
         ImageName.Text = string.IsNullOrEmpty(preferences.CustomBackgroundPath) ? "也可以使用自己的图片" : "自定义图片已保存到本机";
         StatusText.Text = SkinTheme.ImageError ?? "选择会自动记住。关闭窗口即可继续使用。";
+        UiText.Apply(this);
         updating = false;
     }
 
@@ -88,7 +91,7 @@ public partial class SkinWindow : Window
 
     private void ChooseImage(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "选择自定义皮肤图片", Filter = "背景图片|*.png;*.jpg;*.jpeg;*.bmp", CheckFileExists = true, Multiselect = false };
+        var dialog = new OpenFileDialog { Title = UiText.Translate("选择自定义皮肤图片"), Filter = UiText.Translate("背景图片") + "|*.png;*.jpg;*.jpeg;*.bmp", CheckFileExists = true, Multiselect = false };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
@@ -97,9 +100,9 @@ public partial class SkinWindow : Window
             preferences.CustomFocusX = 0.5; preferences.CustomFocusY = 0.35;
             preferences.SkinId = "custom";
             changed(); BuildTiles(); RefreshSelection();
-            StatusText.Text = "图片已保存。可用下方滑块调整遮罩和取景。";
+            StatusText.Text = UiText.Translate("图片已保存。可用下方滑块调整遮罩和取景。");
         }
-        catch (Exception ex) when (SkinImages.IsImageError(ex)) { StatusText.Text = "未能加载图片。请选择有效的 PNG、JPG 或 BMP，大小不超过 25 MB。"; }
+        catch (Exception ex) when (SkinImages.IsImageError(ex)) { StatusText.Text = UiText.Translate("未能加载图片。请选择有效的 PNG、JPG 或 BMP，大小不超过 25 MB。"); }
     }
 
     private void AdjustPhoto(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -129,8 +132,10 @@ public partial class SkinWindow : Window
         SpeedValue.Text = $"{preferences.EffectSpeed:0.00}×";
         EffectsNote.Text = preferences.ReduceMotion || !SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast ? "动态效果已暂停，保留静态外观" : DisplayArt.Ambient(preferences.SkinId ?? "") ? "柔和 ← 强度 → 炫酷 · 自动保存" : "当前为静态皮肤，可选择上方动态皮肤";
         LivePreview.RefreshAppearance();
+        UiText.Apply(this);
     }
 
+    internal double PreviewAnimationIntervalMs => LivePreview.AnimationIntervalMs;
     internal bool PreviewAnimationRunning => LivePreview.AnimationRunning;
     internal void SetReviewEffects(double intensity, double speed) { IntensitySlider.Value = intensity * 100; SpeedSlider.Value = speed * 100; }
     internal void PaintPreviewFrame(double time) => LivePreview.PaintReviewFrame(time);
@@ -140,9 +145,7 @@ public partial class SkinWindow : Window
 
     private void DragHeader(object sender, MouseButtonEventArgs e)
     {
-        var element = e.OriginalSource as DependencyObject;
-        while (element != null) { if (element is Button) return; element = VisualTreeHelper.GetParent(element); }
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        if (WindowDrag.TryMove(this, e)) {}
     }
     private void ClosePicker(object sender, RoutedEventArgs e) => Close();
 }
