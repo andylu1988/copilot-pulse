@@ -15,6 +15,7 @@ public partial class MainWindow
     private HistoryWindow? historyWindow;
     private IReadOnlyList<HistoryFrame>? demoHistory;
     private int miniRevision;
+    private DateTimeOffset miniHistoryUpdated;
 
     private void InitializeHistory()
     {
@@ -42,10 +43,15 @@ public partial class MainWindow
             DateTimeOffset start = HistoryRanges.Start(preferences.HistoryRange, now);
             var frames = demoHistory != null ? demoHistory.Where(f => f.Time >= start && f.Time <= now).ToList() : (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(start, now)));
             if (closing || request != miniRevision) return;
-            MiniHistory.SetData(HistoryMath.Series(frames, null), from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
+            var points = HistoryMath.Series(frames, null);
+            decimal? net = HistoryMath.NetChange(points);
+            HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 {(net.HasValue ? HistoryChart.Signed(net.Value) : "—")}";
+            HistoryNetGrowth.ToolTip = net.HasValue ? "所选区间总用量的末次读数减去首次读数；未采集时段不补算。" : "记录不足、跨月重置或账户集合变化时，无法计算区间净增长。";
+            miniHistoryUpdated = now;
+            MiniHistory.SetData(points, from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
             HistorySummary.Text = App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开";
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { HistorySummary.Text = "历史暂不可读 · 点击查看"; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { HistorySummary.Text = "历史暂不可读 · 点击查看"; HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 —"; }
     }
 
     private void HistoryViewChanged() { SavePreferences(); _ = RefreshMiniHistoryAsync(); }

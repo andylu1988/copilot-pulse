@@ -213,6 +213,7 @@ public partial class MainWindow : Window
     private async void Tick(object? sender, EventArgs e)
     {
         UpdateTimestamp();
+        if (!closing && DateTimeOffset.Now - miniHistoryUpdated >= TimeSpan.FromMinutes(1)) { miniHistoryUpdated = DateTimeOffset.Now; await RefreshMiniHistoryAsync(); }
         if (paused || status == "syncing" || DateTimeOffset.Now < nextRefresh || closing) return;
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         if (monitor != null) await monitor.RefreshAsync();

@@ -25,9 +25,9 @@
       <local:MoneyReadout x:Name="FullAmount" Height="61"/>
       <StackPanel Orientation="Horizontal" Margin="1,8,0,0"><TextBlock Text="INTERNAL USD" Foreground="{DynamicResource SkinFaint}" FontSize="10" FontWeight="SemiBold"/><TextBlock Text=" · " Foreground="{DynamicResource SkinFaint}" FontSize="10"/><TextBlock x:Name="AccountsLabel" Text="等待连接数据源" Foreground="{DynamicResource SkinMuted}" FontSize="10"/></StackPanel>
       <Button Click="OpenHistory" HorizontalContentAlignment="Stretch" Padding="11,8" Background="{DynamicResource SkinChart}" Margin="0,14,0,0" ToolTip="打开用量历史" AutomationProperties.Name="打开用量历史">
-        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="142"/></Grid.ColumnDefinitions>
+        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="142"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center"><TextBlock Text="历史趋势  ↗" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="HistorySummary" Text="从首次记录开始积累" FontSize="9" Foreground="{DynamicResource SkinFaint}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/></StackPanel>
-          <local:HistoryChart x:Name="MiniHistory" Grid.Column="1" Mini="True" Height="36" IsHitTestVisible="False"/>
+          <local:HistoryChart x:Name="MiniHistory" Grid.Column="1" Mini="True" Height="36" IsHitTestVisible="False"/><TextBlock x:Name="HistoryNetGrowth" Grid.Row="1" Grid.ColumnSpan="2" Text="本月净增长 —" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
         </Grid>
       </Button>
       <Border x:Name="DemoBadge" Visibility="Collapsed" CornerRadius="5" Background="#493720" Padding="8,5" Margin="0,12,0,0"><TextBlock Text="示例预览 · 虚构金额，非实时数据" Foreground="#F4C77E" FontSize="11"/></Border>
