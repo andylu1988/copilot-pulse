@@ -1,45 +1,106 @@
 # Copilot Pulse
 
-Windows 桌面 Copilot 用量小组件：实时刷新、历史趋势、迷你数字框、22 套皮肤和动态效果。
+**把 Copilot 用量放在桌面上，让每一次增长都看得见。**
 
-**当前版本：1.9.6 · Windows 10 1809+ / Windows 11 · x64**
+Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-## 下载与安装
+**v1.9.6 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
-从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.6-x64.exe`，双击按当前用户安装。无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时会运行微软官方引导程序，该步骤需要联网。安装包尚未进行代码签名。
+[下载安装](https://github.com/andylu1988/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
-默认安装到 `%LOCALAPPDATA%\Programs\CopilotPulse`，提供开始菜单入口和可选桌面快捷方式。升级前请从托盘退出组件；升级和卸载保留历史及个人设置。
+![完整组件、今天趋势和迷你皮肤](docs/screenshots/overview.png)
 
-此仓库为私有仓库，下载者需要仓库访问权限。
+> 所有截图均使用虚构账户、金额和历史数据，由 v1.9.6 实际界面控件在隔离的示例环境中渲染，保留“示例”标记。静态截图展示动画中的一个时刻。
 
-## 登录与适用范围
+## 它能做什么
 
-数据来自 [Microsoft 内部 Copilot Consumption 页面](https://copilot.github.microsoft.com/?section=limits&tab=consumption)，需要使用者具有该站点的访问权限和相应网络环境。这不是通用的 GitHub Copilot 个人订阅统计工具，也不是 Microsoft 或 GitHub 官方产品。
+| 功能 | 使用体验 |
+| --- | --- |
+| 自动刷新 | 默认每 60 秒读取页面，可选 30 秒或 5 分钟，支持手动刷新和暂停。 |
+| 用量总览 | 显示本月累计金额、企业明细、用量比例和 Monthly limit。 |
+| 三种模式 | 完整模式看明细，紧凑模式看金额与趋势，迷你模式突出一个数字。 |
+| 历史趋势 | 今天、24 小时、7 天、本月、全部历史；支持总用量与单个企业。 |
+| 两种图表 | 累计折线看走势，变化柱状图看相邻采样变化，悬停查看详细读数。 |
+| 区间净增长 | 完整与紧凑主卡片在小曲线下显示所选区间的总用量净增长，一起刷新。 |
+| 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
+| 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
+| 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
+| 本机历史 | 按月保存，重启后继续查看；升级与卸载保留历史和设置。 |
 
-组件默认尝试通过 WebView2 使用当前 Windows 主账户 SSO；已有本机组件登录会话也可能决定当前账户。多账户、本地 Windows 账户、MFA 或访问策略可能要求点击“连接 Microsoft 账户”完成登录，因此无法保证所有 corp 账户都能静默登录。
+## 截图一览
 
-每位用户使用自己的账户。安装包不包含作者的登录会话、真实用量、历史或 API Key；不会导入系统浏览器 Cookie，组件不读取或导出 PRT。运行时不调用图像生成服务。
+### 从完整卡片到迷你数字框
 
-## 使用
+<table>
+<tr><th>完整：企业明细与总览</th><th>紧凑：金额与区间净增长</th></tr>
+<tr><td><img src="docs/screenshots/widget-full.png" width="350" alt="完整模式，示例数据"></td><td valign="top"><img src="docs/screenshots/widget-compact.png" width="350" alt="紧凑模式，示例数据"></td></tr>
+</table>
 
-- 默认每 60 秒同步，可选择 30 秒、5 分钟或暂停；统计时效仍取决于源网站。
-- 完整、紧凑、迷你数字三种模式；拖动移动，双击迷你框展开。
-- 右键或设置菜单选择皮肤、动效强度和速度，可关闭动画。
-- 历史趋势支持累计折线、变化柱状图，以及总额和单个企业。主界面小曲线下方显示所选区间的总用量净增长，随记录、区间选择和时间一起刷新。
-- “今天”按本机日期显示当天 00:00 到当前时间的已采集记录，跨午夜自动切换；未采集时段留空。曲线显示累计用量，区间变化为已记录首末读数之差。
-- 收起到托盘后双击图标恢复；托盘菜单退出。
+![八种迷你皮肤，均为示例数据](docs/screenshots/mini-skins.png)
 
-连接失败时保留并标记上次成功读数，首次未登录时不展示虚构金额。示例模式明确标为示例。
+### 看清今天的变化
 
-## 本机数据
+“今天”从本机时间凌晨 00:00 到当前时间。曲线金额仍是采样时的本月累计读数；当天已记录的增长看“区间净变化”。示例最后读数 **$1,234.56**，今天净变化 **+$74.75**。
 
-用量、设置、历史与自定义背景保存在：
+![今天累计趋势，示例数据](docs/screenshots/history-today.png)
+
+切换“单次变化”可以发现相邻连续读数在哪些时段增长较快。
+
+![今天变化柱状图，示例数据](docs/screenshots/history-changes.png)
+
+## 下载与首次使用
+
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.6-x64.exe`。
+2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
+3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
+4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
+
+安装通常无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时运行微软官方引导程序，需要联网。安装包目前未签名，请遵循组织的软件安装策略。
+
+**仓库为私有仓库，下载者需要仓库访问权限。** 每位使用者还需要具有 [内部 Consumption 页面](https://copilot.github.microsoft.com/?section=limits&tab=consumption) 的访问权限及相应网络环境。
+
+## 日常操作
+
+| 想做什么 | 怎么操作 |
+| --- | --- |
+| 只显示数字 | 主窗口“迷你”，或设置 / 换肤中的“迷你数字”。 |
+| 恢复大卡片 | 双击迷你框；右键可打开设置。 |
+| 看当天增长 | 打开历史选择“今天”；主卡片净增长同步改为今天。 |
+| 看单个企业 | 历史窗口左上角选择企业；主卡片净增长始终按总用量计算。 |
+| 改刷新频率 | 设置 → 自动刷新间隔；底部刷新按钮立即读取。 |
+| 换外观 | 点击“换肤”，选择即生效，主卡片与历史窗口同步切换。 |
+| 降低动画 | 开启“减少动态效果”，或在换肤界面关闭动态效果。 |
+| 收起 / 退出 | 最小化收起到托盘，双击托盘图标恢复；托盘菜单退出。 |
+
+安装、登录、趋势计算、全部皮肤、备份和问题处理见 [详细使用指南](docs/USER-GUIDE.zh-CN.md)。
+
+## 数据来源、账户与隐私
+
+这是非官方工具，读取内部页面展示的 GitHub Copilot 企业消费数据，单位为 **INTERNAL USD**。它不是通用的个人订阅统计工具，也不统计所有 AI 产品开销。**Monthly limit 是页面的使用上限，不代表个人预算；以源网站为核对依据。** 刷新频率不等于网站数据更新速度。
+
+每位用户使用自己的账户。WebView2 尝试 Windows 主账户 SSO，但现有组件会话、多账户、MFA 或条件访问可能要求交互登录。组件不导入系统浏览器 Cookie，不读取或导出 PRT，也不保存用户输入的密码；WebView2 正常管理本机登录会话。
+
+用量、历史、设置与自定义图片保存在：
 
 ```text
 %USERPROFILE%\Documents\Codex\CopilotPulse-data
 ```
 
-历史按月追加到 `history\YYYY-MM.jsonl`。WebView2 正常保存本机登录会话；常规桌面运行目录为 `%LOCALAPPDATA%\CopilotPulse\WebView2`，具体目录可能受启动环境影响。用量不会上传到其他服务。
+历史为 `history\YYYY-MM.jsonl`。这些文件**未额外加密**，可能包含企业名称、登录名、金额和时间。如果目录被系统同步或备份，文件也可能被同步或备份，请按组织要求管理。
+
+应用不会主动把采集用量上传到额外服务；登录和读取页面仍需访问源站与认证服务。运行时不调用图像生成 API。安装包不含作者账户会话、真实用量、历史或 API Key。分享安装包即可，不要打包自己的数据目录或 WebView2 登录目录。
+
+## 常见问题
+
+| 现象 | 建议 |
+| --- | --- |
+| 未显示金额 | 在“Windows 账户登录 / 数据源”中完成登录，确认有源站权限。 |
+| 浏览器正常，组件未登录 | 浏览器与 WebView2 会话分别管理，请在组件中登录。 |
+| 刷新失败后金额不变 | 组件保留并标记上次成功读数，检查网络、会话与源页面后手动刷新。 |
+| 今天没有曲线 | 今天尚无有效采样；无法回补应用未运行的历史。 |
+| 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或企业集合改变。 |
+| 重启看不到旧记录 | 先选“全部”，用“历史文件夹”检查记录和目录权限。 |
+| 动画太强 | 降低强度 / 速度，或开启“减少动态效果”。 |
 
 ## 从源码构建
 
@@ -52,7 +113,7 @@ dotnet run --project .\tests\SsoPolicy\SsoPolicy.csproj
 dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-tests
 ```
 
-构建安装包需要 [Inno Setup](https://jrsoftware.org/isinfo.php)（已验证 6.7.3）与 [Microsoft WebView2 官方引导程序](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。脚本检查引导程序的 Microsoft 签名。
+安装包需要 [Inno Setup](https://jrsoftware.org/isinfo.php)（已验证 6.7.3）与 [Microsoft WebView2 官方引导程序](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。脚本检查引导程序的 Microsoft 签名及安装内容是否混入个人数据。
 
 ```powershell
 .\installer\Build-Installer.ps1 `
@@ -62,12 +123,18 @@ dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-
   -BuildDirectory '.\work\installer-build'
 ```
 
-仅用于外观预览的 `publish\CopilotPulse.exe --demo` 使用虚构账号与金额，不覆盖真实缓存。页面布局变化可能需要更新 `extract-consumption.js`。
+`publish\CopilotPulse.exe --demo` 可预览外观，不覆盖真实缓存。本页截图另用隔离文档示例生成，见 [截图说明](docs/screenshots/README.md)。页面布局变化可能需要更新 `extract-consumption.js`。
 
-版本与功能说明见 [CHANGELOG.md](CHANGELOG.md)。素材来源见 [Assets/MATRIX-ART.md](Assets/MATRIX-ART.md) 和 [所选图标](Assets/SELECTED-DESKTOP-ICON.md)。
+## 参考与素材
+
+介绍结构参考 [mcaps-microsoft/copilot-usage-monitor](https://github.com/mcaps-microsoft/copilot-usage-monitor) 的功能、截图、安装、使用与隐私说明组织方式。两个项目实现、功能和本机保存策略不同，该链接仅作介绍结构参考。
+
+版本见 [CHANGELOG.md](CHANGELOG.md)，素材见 [矩阵背景](Assets/MATRIX-ART.md) 与 [当前应用图标](Assets/SELECTED-DESKTOP-ICON.md)。
 
 ## English
 
-Copilot Pulse is an unofficial Windows desktop widget for the Microsoft internal Copilot Consumption page. It provides live refresh, local history charts, compact and mini modes, and 22 animated themes. Access to the internal site is required.
+**Copilot Pulse puts your Copilot usage on the Windows desktop.** This unofficial widget reads the Microsoft internal Copilot Consumption page, with automatic refresh, enterprise details, local history, five time ranges, cumulative and change charts, three display modes, 22 built-in skins, and custom backgrounds.
 
-Download the per-user x64 installer from Releases. It includes the .NET runtime and installs WebView2 if needed. Windows account SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Each recipient uses their own account; no author credentials or usage history are distributed. The installer is currently unsigned. Usage and history stay on the local machine.
+Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. Access to this private repository and the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
+
+All screenshots use **synthetic accounts and usage**, rendered with actual v1.9.6 controls. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.

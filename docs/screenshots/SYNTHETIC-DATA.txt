@@ -1,0 +1,1 @@
+Actual Copilot Pulse 1.9.6 controls. All accounts and amounts synthetic. Total $1,234.56 = $1,200.00 + $34.56. History ends at same total. Isolated staging build; no live connection, real usage or login profile captured.
