@@ -39,7 +39,7 @@ public partial class MainWindow : Window
         Topmost = preferences.Topmost;
         PinButton.Foreground = Brush(Topmost ? "#83D6EC" : "#7186A6");
         if (App.StartSkin != null) preferences.SkinId = SkinTheme.Find(App.StartSkin).Id;
-        MonthLabel.Text = DateTime.Now.ToString("MMM yyyy", Us).ToUpperInvariant();
+        MonthLabel.Text = DateTime.UtcNow.ToString("MMM yyyy", Us).ToUpperInvariant();
         Surface.SizeChanged += (_, _) => ApplyPhotoBackground();
         InitializeSkin();
         InitializeDisplayMode();
@@ -126,7 +126,7 @@ public partial class MainWindow : Window
         data = received;
         RefreshNumericState();
         AccountsLabel.Text = $"{data.Accounts.Count} 个企业账户";
-        MonthLabel.Text = data.FetchedAt.ToString("MMM yyyy", Us).ToUpperInvariant();
+        MonthLabel.Text = data.FetchedAt.UtcDateTime.ToString("MMM yyyy", Us).ToUpperInvariant();
         EmptyState.Visibility = Visibility.Collapsed;
         AccountCards.Children.Clear();
         for (int i = 0; i < data.Accounts.Count; i++) AccountCards.Children.Add(CreateCard(data.Accounts[i], i));

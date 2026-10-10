@@ -4,13 +4,13 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.9.7 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.9.8 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
-[下载安装](https://github.com/andylu1988/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
+[下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
 ![完整组件、今天趋势和迷你皮肤](docs/screenshots/overview.png)
 
-> 所有截图均使用虚构账户、金额和历史数据，由 v1.9.6 实际界面控件在隔离的示例环境中渲染，保留“示例”标记。静态截图展示动画中的一个时刻。
+> 应用截图使用虚构账户、金额和历史，在隔离环境渲染。外观展示来自 v1.9.6；首次连接和 UTC 月份截图来自 v1.9.8。登录步骤中间栏是流程说明，不是 Microsoft 登录页截图。静态图展示动画的一帧。
 
 ## 它能做什么
 
@@ -19,7 +19,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 自动刷新 | 默认每 60 秒读取页面，可选 30 秒或 5 分钟，支持手动刷新和暂停。 |
 | 用量总览 | 显示本月累计金额、企业明细、用量比例和 Monthly limit。 |
 | 三种模式 | 完整模式看明细，紧凑模式看金额与趋势，迷你模式突出一个数字。 |
-| 历史趋势 | 今天、24 小时、7 天、本月、全部历史；支持总用量与单个企业。 |
+| 历史趋势 | 今天、24 小时、7 天、本月、指定月份；支持总用量与单个企业。 |
 | 两种图表 | 累计折线看走势，变化柱状图看相邻采样变化，悬停查看详细读数。 |
 | 区间净增长 | 完整与紧凑主卡片在小曲线下显示所选区间的总用量净增长，一起刷新。 |
 | 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
@@ -50,14 +50,28 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.7-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.8-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
 
+![首次使用：点击连接、验证自己的账户、等待同步成功](docs/screenshots/onboarding.png)
+
+**步骤 1：点击连接。** 没有数据时点击“连接 Microsoft 账户 ↗”；也可打开菜单 →“Windows 账户登录 / 数据源”。
+
+**步骤 2：完成官方验证。** 在组件打开的 Microsoft 登录与数据源窗口核对自己的 corp 账户，按组织提示完成 MFA。支持 SSO 且已同步时可跳过。
+
+**步骤 3：确认数据进入组件。** Consumption 页面加载后会自动读取。主卡片显示“已同步”、总金额和企业明细后即完成；首次历史需积累至少两笔读数才能计算净增长。
+
 安装通常无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时运行微软官方引导程序，需要联网。安装包目前未签名，请遵循组织的软件安装策略。
 
 **仓库为私有仓库，下载者需要仓库访问权限。** 每位使用者还需要具有 [内部 Consumption 页面](https://copilot.github.microsoft.com/?section=limits&tab=consumption) 的访问权限及相应网络环境。
+
+## 按配额月份查看历史
+
+配额按 **UTC 月份**划分，中国时区月初重置时间为 **1 日 08:00**。“今天”仍按本机自然日计算。点击“月份 ▾”选择已有记录的月份，替代原来的“全部”。主卡片净增长随所选月份一起刷新。
+
+![UTC 本月趋势与月份选择入口，示例数据](docs/screenshots/history-month-utc.png)
 
 ## 日常操作
 
@@ -99,7 +113,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 刷新失败后金额不变 | 组件保留并标记上次成功读数，检查网络、会话与源页面后手动刷新。 |
 | 今天没有曲线 | 今天尚无有效采样；无法回补应用未运行的历史。 |
 | 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或非零金额企业加入、移出；界面显示具体原因。零金额企业增减不影响计算。 |
-| 重启看不到旧记录 | 先选“全部”，用“历史文件夹”检查记录和目录权限。 |
+| 重启看不到旧记录 | 先用“月份 ▾”选择旧月份，用“历史文件夹”检查记录和目录权限。 |
 | 动画太强 | 降低强度 / 速度，或开启“减少动态效果”。 |
 
 ## 从源码构建

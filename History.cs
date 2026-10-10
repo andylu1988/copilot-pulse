@@ -27,7 +27,7 @@ public sealed class HistoryFrame
     public List<HistoryAccount> Accounts { get; set; } = new();
     public static HistoryFrame From(Consumption data, int cadence) => new()
     {
-        Time = data.FetchedAt, Period = data.FetchedAt.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+        Time = data.FetchedAt, Period = HistoryRanges.Period(data.FetchedAt),
         Total = data.Total, Cadence = cadence,
         Accounts = data.Accounts.Select(a => new HistoryAccount { Name = a.Name, Login = a.Login, Cost = a.Cost }).ToList()
     };
@@ -162,10 +162,10 @@ public static class HistoryMath
             if (key != null && account == null) { previous = null; continue; }
             decimal value = key == null ? frame.Total : account!.Cost;
             double elapsed = previous == null ? 0 : (frame.Time - previous.Time).TotalSeconds;
-            string reason = previous == null ? "起始记录" : frame.Period != previous.Period ? "新月份 · 累计值重新开始" :
+            string reason = previous == null ? "起始记录" : HistoryRanges.Period(frame.Time) != HistoryRanges.Period(previous.Time) ? "新月份 · 累计值重新开始" :
                 key == null && TotalBasisChanged(previous, frame) ? "企业账户集合变化" :
                 elapsed > Math.Max(180, Math.Max(frame.Cadence, previous.Cadence) * 3 + 30) ? "采样中断 · 不连接缺失区间" : "";
-            result.Add(new HistoryPoint(frame.Time, value, reason.Length == 0 ? value - previousValue : null, reason.Length > 0, reason, frame.Period, elapsed));
+            result.Add(new HistoryPoint(frame.Time, value, reason.Length == 0 ? value - previousValue : null, reason.Length > 0, reason, HistoryRanges.Period(frame.Time), elapsed));
             previous = frame;
             previousValue = value;
         }

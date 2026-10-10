@@ -27,7 +27,7 @@ var spaced = new[] { HistoryFrame.From(Sample(start, 10), 60), HistoryFrame.From
 Check("offline interval breaks the curve and delta", HistoryMath.Series(spaced, null)[1] is { BreakBefore: true, Delta: null });
 var slow = new[] { HistoryFrame.From(Sample(start, 10), 300), HistoryFrame.From(Sample(start.AddMinutes(5), 11), 300) };
 Check("5-minute refresh is not an offline gap", HistoryMath.Series(slow, null)[1].Delta == 1);
-var rollover = new[] { HistoryFrame.From(Sample(new DateTimeOffset(2026, 9, 30, 23, 59, 0, start.Offset), 999), 60), HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 0, 0, start.Offset), 1), 60) };
+var rollover = new[] { HistoryFrame.From(Sample(new DateTimeOffset(2026, 9, 30, 23, 59, 0, TimeSpan.Zero), 999), 60), HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero), 1), 60) };
 Check("new month does not create a huge negative change", HistoryMath.Series(rollover, null)[1].Delta == null);
 Check("cross-month endpoint subtraction is suppressed", HistoryMath.NetChange(HistoryMath.Series(rollover, null)) == null);
 var missing = samples.Take(3).Select(f => HistoryFrame.From(Sample(f.Time, f.Total), 60)).ToArray();
@@ -39,7 +39,7 @@ File.AppendAllText(Path.Combine(directory, "2026-09.jsonl"), "{unfinished-tail")
 Check("append recovers after an incomplete journal tail", repository.Record(Sample(start.AddMinutes(4), 10.15m), 60));
 Check("corrupt line does not discard good history", new HistoryRepository(directory).ReadRange(start, start.AddHours(1)).Count == 5);
 Check("latest survives corrupt journal tail", new HistoryRepository(directory).ReadLatest()!.Total == 10.15m);
-var nextMonth = Sample(new DateTimeOffset(2026, 10, 1, 1, 0, 0, start.Offset), 2);
+var nextMonth = Sample(new DateTimeOffset(2026, 10, 1, 8, 0, 0, start.Offset), 2);
 repository.Record(nextMonth, 60);
 Check("monthly files preserve older history", Directory.GetFiles(directory, "*.jsonl").Length == 2 && repository.ReadRange(start, nextMonth.FetchedAt).Count == 6);
 string blocked = Path.Combine(directory, "not-a-directory"); File.WriteAllText(blocked, "test");
@@ -67,9 +67,9 @@ Check("new legacy samples are imported on a later launch", third.Imported == 1 &
 Check("merged output is chronological", new HistoryRepository(Path.Combine(shared, "history")).ReadAll().Select(x => x.Time).SequenceEqual(new[] { start, start.AddMinutes(1), start.AddMinutes(2), start.AddMinutes(4) }));
 Check("rewritten target is backed up before merging", Directory.GetFiles(Path.Combine(shared, "migration-backups"), "2026-09.jsonl", SearchOption.AllDirectories).Length == 1);
 Check("default history range retains this month after restart", new Preferences().HistoryRange == "month");
-var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "all", HistoryChanges = true }))!;
-Check("selected history range and mode survive serialization", restoredView.HistoryRange == "all" && restoredView.HistoryChanges);
-Check("all-history range has no rolling cutoff", HistoryRanges.Start("all", start) == DateTimeOffset.MinValue);
+var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "2026-09", HistoryChanges = true }))!;
+Check("selected history range and mode survive serialization", restoredView.HistoryRange == "2026-09" && restoredView.HistoryChanges);
+Check("legacy all selection becomes current month", HistoryRanges.Normalize("all") == "month");
 
 var china = TimeZoneInfo.CreateCustomTimeZone("Test UTC+8", TimeSpan.FromHours(8), "Test UTC+8", "Test UTC+8");
 var todayNow = new DateTimeOffset(2026, 10, 8, 14, 30, 0, TimeSpan.FromHours(8));
@@ -112,16 +112,32 @@ Check("cross month has explicit unavailable reason", HistoryMath.NetChangeUnavai
 Check("real account replacement still suppresses net", HistoryMath.NetChange(HistoryMath.Series(missing, null)) == null);
 Check("account ordering does not change comparability", HistoryMath.NetChange(HistoryMath.Series(new[] {membership[1], new HistoryFrame { Time = start.AddMinutes(3), Period = membership[1].Period, Total = membership[1].Total, Accounts = membership[1].Accounts.AsEnumerable().Reverse().ToList() }}, null)) == 0);
 
+var beforeReset = new DateTimeOffset(2026, 10, 1, 7, 59, 59, TimeSpan.FromHours(8));
+var reset = beforeReset.AddSeconds(1);
+Check("UTC month remains September before China 08:00", HistoryRanges.Period(beforeReset) == "2026-09");
+Check("UTC month becomes October at China 08:00", HistoryRanges.Period(reset) == "2026-10");
+Check("current month starts at UTC zero with any supplied offset", HistoryRanges.Start("month", reset) == reset && HistoryRanges.Start("month", beforeReset) == new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero));
+Check("selected month bounds end before next UTC reset", HistoryRanges.Start("2026-09", todayNow) == new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero) && HistoryRanges.End("2026-09", todayNow) == reset.AddTicks(-1));
+Check("current selected month ends now", HistoryRanges.End("2026-10", todayNow) == todayNow);
+Check("invalid month preference falls back safely", HistoryRanges.Normalize("2026-13") == "month");
+var legacyBoundary = new[] { HistoryFrame.From(Sample(beforeReset, 900), 60), HistoryFrame.From(Sample(reset, 0.1m), 60) };
+foreach (var f in legacyBoundary) f.Period = "2026-10";
+Check("legacy local period fields do not hide UTC reset", HistoryMath.Series(legacyBoundary, null)[1].Delta == null);
+var localBoundary = new[] { HistoryFrame.From(Sample(beforeReset.AddHours(-8), 890), 60), HistoryFrame.From(Sample(beforeReset, 900), 60) };
+localBoundary[0].Period = "2026-09"; localBoundary[1].Period = "2026-10";
+Check("legacy local midnight does not split UTC month", HistoryMath.NetChange(HistoryMath.Series(localBoundary, null)) == 10);
+Check("new history records use UTC quota month", HistoryFrame.From(Sample(beforeReset, 1), 60).Period == "2026-09");
+
 if (args.Length > 1)
 {
     var real = new HistoryRepository(args[1]);
     var replayNow = new DateTimeOffset(2026, 10, 10, 16, 23, 0, TimeSpan.FromHours(8));
-    foreach (string range in new[] { "today", "24h", "7d", "month", "all" })
+    foreach (string range in new[] { "today", "24h", "7d", "month", "2026-09" })
     {
-        var replay = HistoryMath.Series(real.ReadRange(HistoryRanges.Start(range, replayNow), replayNow), null);
+        var replay = HistoryMath.Series(real.ReadRange(HistoryRanges.Start(range, replayNow), HistoryRanges.End(range, replayNow)), null);
         var value = HistoryMath.NetChange(replay);
-        Check("saved history replay " + range, range == "all" ? value == null : value == replay[^1].Value - replay[0].Value);
-        Console.WriteLine($"REPLAY {range}: {replay.Count} samples, net={value}, reason={HistoryMath.NetChangeUnavailableReason(replay)}");
+        Check("saved history replay " + range, value == replay[^1].Value - replay[0].Value);
+        Console.WriteLine($"REPLAY {range}: {replay.Count} samples, net={value}");
     }
 }
 Console.WriteLine($"{passed} history checks passed.");

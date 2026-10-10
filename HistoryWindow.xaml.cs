@@ -60,13 +60,14 @@ public partial class HistoryWindow : Window
         int request = ++revision;
         DateTimeOffset now = DateTimeOffset.Now;
         DateTimeOffset start = RangeStart(now);
+        DateTimeOffset end = HistoryRanges.End(range, now);
         try
         {
-            var loaded = demo != null ? demo.Where(f => f.Time >= start && f.Time <= now).ToList() : await Task.Run(() => repository!.ReadRange(start, now));
+            var loaded = demo != null ? demo.Where(f => f.Time >= start && f.Time <= end).ToList() : await Task.Run(() => repository!.ReadRange(start, end));
             if (closed || request != revision) return;
             frames = loaded;
             chartStart = start;
-            chartEnd = now;
+            chartEnd = end;
             if (series != null && !frames.Any(f => f.Accounts.Any(a => a.Key == series))) { series = null; SeriesButton.Content = "总用量  ▾"; }
             RenderChart();
         }
@@ -87,12 +88,12 @@ public partial class HistoryWindow : Window
         NetValue.Foreground = Brush(net < 0 ? "#F1B58B" : "#79D9BF");
         SampleCount.Text = points.Count.ToString("N0") + " 次";
         CoverageLabel.Text = points.Count > 0 ? $"实际记录 {points[0].Time.LocalDateTime:MM/dd HH:mm} — {points[^1].Time.LocalDateTime:MM/dd HH:mm}" : "从首次记录开始积累";
-        PeriodLabel.Text = range == "today" ? $"今天 · {chartStart.LocalDateTime:MM/dd} 00:00 — {chartEnd.LocalDateTime:HH:mm}（本机时间）" : HistoryRanges.Label(range);
+        PeriodLabel.Text = range == "today" ? $"今天 · {chartStart.LocalDateTime:MM/dd} 00:00 — {chartEnd.LocalDateTime:HH:mm}（本机时间）" : range == "month" || HistoryRanges.IsMonth(range) ? $"{HistoryRanges.Label(range)} · 配额按 UTC 月份，起点 {chartStart.LocalDateTime:yyyy/MM/dd HH:mm}（本机时间）" : HistoryRanges.Label(range);
         Chart.Accent = series == null ? SkinTheme.Current.Accent : SkinTheme.Current.Secondary;
         Chart.SetData(points, changes, range == "today" ? chartStart : null, range == "today" ? chartEnd : null);
         Footnote.Text = changes ? "单次变化 = 本次减去上次连续读数；每次间隔取决于刷新频率。中断和跨月不计算增量。" : "鼠标悬停查看读数 · 采样中断与跨月重置分段显示 · 纵轴按实际金额缩放";
         HistoryNotice.Text = demo != null ? "示例数据用于验证外观，不会写入你的历史文件。" : repository?.LastError ?? (
-            points.Count == 0 ? "这个时间范围内没有记录。可点击“全部历史”查看以前保存的记录。" :
+            points.Count == 0 ? "这个时间范围内没有记录。可点击“月份 ▾”选择有记录的月份。" :
             $"最后记录 {points[^1].Time.LocalDateTime:MM/dd HH:mm:ss} · 数据仅保存在本机，不补造采集前的历史。");
         if (net < 0) Footnote.Text = "净变化为负：区间记录可能包含源页面累计值归零或金额修正，不代表负消费。  " + Footnote.Text;
         if (netReason != null) Footnote.Text = "净变化不可计算：" + netReason + "  " + Footnote.Text;
@@ -106,13 +107,35 @@ public partial class HistoryWindow : Window
 
     private void UpdateButtons()
     {
-        foreach (var button in new[] { TodayButton, HoursButton, WeekButton, MonthButton, AllButton }) button.Background = Brush((string)button.Tag == range ? "#284560" : "#111E31");
+        foreach (var button in new[] { TodayButton, HoursButton, WeekButton, MonthButton }) button.Background = Brush((string)button.Tag == range ? "#284560" : "#111E31");
+        MonthPickerButton.Content = HistoryRanges.IsMonth(range) ? range + " ▾" : "月份 ▾";
+        MonthPickerButton.Background = Brush(HistoryRanges.IsMonth(range) ? "#284560" : "#111E31");
         if (range == "today" && !closed) todayRefresh.Start(); else todayRefresh.Stop();
         CumulativeButton.Background = Brush(changes ? "#111E31" : "#284560");
         ChangesButton.Background = Brush(changes ? "#284560" : "#111E31");
     }
 
     private async void ChangeRange(object sender, RoutedEventArgs e) { range = (string)((Button)sender).Tag; viewPreferences.HistoryRange = range; viewChanged?.Invoke(); UpdateButtons(); await ReloadAsync(); }
+    private async void ChooseMonth(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var all = demo ?? await Task.Run(() => repository!.ReadAll());
+            if (closed) return;
+            var months = all.Select(f => HistoryRanges.Period(f.Time)).Distinct().OrderByDescending(m => m).ToList();
+            var menu = new ContextMenu { PlacementTarget = MonthPickerButton };
+            if (months.Count == 0) menu.Items.Add(new MenuItem { Header = "还没有月份记录", IsEnabled = false });
+            foreach (string month in months)
+            {
+                var item = new MenuItem { Header = month, IsCheckable = true, IsChecked = range == month };
+                item.Click += async (_, _) => { range = month; viewPreferences.HistoryRange = range; viewChanged?.Invoke(); UpdateButtons(); await ReloadAsync(); };
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { HistoryNotice.Text = "暂时无法读取历史月份，请检查磁盘或权限。"; }
+    }
+
     private void ChangeMode(object sender, RoutedEventArgs e) { changes = (string)((Button)sender).Tag == "changes"; viewPreferences.HistoryChanges = changes; viewChanged?.Invoke(); UpdateButtons(); RenderChart(); }
     private void ChooseSeries(object sender, RoutedEventArgs e)
     {

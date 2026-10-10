@@ -41,7 +41,8 @@ public partial class MainWindow
         {
             DateTimeOffset now = DateTimeOffset.Now;
             DateTimeOffset start = HistoryRanges.Start(preferences.HistoryRange, now);
-            var frames = demoHistory != null ? demoHistory.Where(f => f.Time >= start && f.Time <= now).ToList() : (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(start, now)));
+            DateTimeOffset end = HistoryRanges.End(preferences.HistoryRange, now);
+            var frames = demoHistory != null ? demoHistory.Where(f => f.Time >= start && f.Time <= end).ToList() : (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(start, end)));
             if (closing || request != miniRevision) return;
             var points = HistoryMath.Series(frames, null);
             decimal? net = HistoryMath.NetChange(points);
@@ -78,7 +79,7 @@ public partial class MainWindow
             second += i % 13 == 0 ? 0.06m : 0;
             if (i == 76) first -= 0.21m;
             DateTimeOffset time = now.AddMinutes((i - 99) * 3);
-            result.Add(new HistoryFrame { Time = time, Period = time.ToString("yyyy-MM"), Cadence = 60, Total = first + second, Accounts = new() {
+            result.Add(new HistoryFrame { Time = time, Period = HistoryRanges.Period(time), Cadence = 60, Total = first + second, Accounts = new() {
                 new HistoryAccount { Name = "Example Enterprise", Login = "demo-emu", Cost = first },
                 new HistoryAccount { Name = "Example Organization", Login = "demo-user", Cost = second }
             } });

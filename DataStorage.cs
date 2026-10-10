@@ -115,17 +115,30 @@ public static class DataStorage
 
 public static class HistoryRanges
 {
-    public static string Normalize(string? range) => range is "today" or "24h" or "7d" or "month" or "all" ? range : "month";
-    public static DateTimeOffset Start(string? range, DateTimeOffset now, TimeZoneInfo? localTimeZone = null) => Normalize(range) switch {
-        "today" => LocalMidnight(now, localTimeZone ?? TimeZoneInfo.Local),
-        "24h" => now.AddHours(-24), "7d" => now.AddDays(-7), "all" => DateTimeOffset.MinValue,
-        _ => new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, now.Offset)
-    };
+    public static string Period(DateTimeOffset time) => time.UtcDateTime.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+    public static bool IsMonth(string? range) => DateTime.TryParseExact(range, "yyyy-MM", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _);
+    public static string Normalize(string? range) => range is "today" or "24h" or "7d" or "month" || IsMonth(range) ? range! : "month";
+    public static DateTimeOffset Start(string? range, DateTimeOffset now, TimeZoneInfo? localTimeZone = null)
+    {
+        string value = Normalize(range);
+        if (value == "today") return LocalMidnight(now, localTimeZone ?? TimeZoneInfo.Local);
+        if (value == "24h") return now.AddHours(-24);
+        if (value == "7d") return now.AddDays(-7);
+        string month = IsMonth(value) ? value : Period(now);
+        var date = DateTime.ParseExact(month, "yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+        return new DateTimeOffset(date.Year, date.Month, 1, 0, 0, 0, TimeSpan.Zero);
+    }
+    public static DateTimeOffset End(string? range, DateTimeOffset now)
+    {
+        if (!IsMonth(range)) return now;
+        var next = Start(range, now).AddMonths(1);
+        return next <= now ? next.AddTicks(-1) : now;
+    }
     private static DateTimeOffset LocalMidnight(DateTimeOffset now, TimeZoneInfo zone)
     {
         // Resolve the offset at midnight, which can differ from now on a DST transition day.
         DateTime midnight = TimeZoneInfo.ConvertTime(now, zone).Date;
         return new DateTimeOffset(midnight, zone.GetUtcOffset(midnight));
     }
-    public static string Label(string? range) => Normalize(range) switch { "today" => "今天", "24h" => "24 小时", "7d" => "7 天", "all" => "全部历史", _ => "本月" };
+    public static string Label(string? range) => Normalize(range) switch { "today" => "今天", "24h" => "24 小时", "7d" => "7 天", _ => IsMonth(range) ? range! : "本月" };
 }
