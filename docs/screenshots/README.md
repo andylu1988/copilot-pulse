@@ -44,3 +44,8 @@
 新增图的金额、账户与趋势全部虚构。未连接数据源、读取登录资料或修改用户设置及历史。静态矩阵图片展示动画的一帧。
 
 新增英文对应截图及 `threshold-progress-matrix.png` / `threshold-progress-matrix-en.png`：$2,000 阈值、61.73% 进度，尚未达到警告线。所有新图月初 $0、末值 $1,234.56、本月净增长 +$1,234.56；真实历史不补造月初基线。
+
+## v1.11.2 在线更新
+
+- `online-update.png` 更新为实际 1.11.2 控件截图，展示一键检查、下载、校验、安装与重启入口。来自隔离界面验证，未读取真实账户数据。
+- The online update screenshot shows the actual 1.11.2 controls from an isolated UI review, without real account data.

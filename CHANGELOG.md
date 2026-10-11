@@ -1,5 +1,13 @@
 ﻿# Copilot Pulse
 
+## 1.11.2：版本识别修复与一键更新 / Version fix and one-click updates
+
+- 修复 1.11.1 的显示与更新比较仍写死为 1.11.0：统一读取实际程序集版本，避免升级后重复提示。
+- 一键自动检查、下载、SHA256 校验、静默安装和客户端重启；安装后核对目标版本，失败提示并保留重试入口。
+- Corrects the hardcoded 1.11.0 version in 1.11.1. Display and comparisons now use the running assembly.
+- Update and restart completes download, verification, silent installation and restart in one click; the helper verifies the installed version.
+
+
 ## 1.11.1：更醒目的用量警告
 
 - 完整和紧凑面板在金额下方显示固定琥珀色警告条、警告图标、标题与高对比正文，避免警告混入皮肤背景。达到阈值时主面板进度及迷你进度采用琥珀色，迷你增加警告标识。

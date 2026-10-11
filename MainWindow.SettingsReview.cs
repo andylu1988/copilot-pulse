@@ -119,6 +119,29 @@ public partial class MainWindow
         updateWindow!.Close();
         var updateReview = new UpdateWindow(preferences) { Owner = this }; updateReview.Show(); await Task.Delay(120);
         CaptureControl(updateReview, Path.Combine(directory, "online-update.png")); updateReview.Close();
+        var expectedVersion = UpdatePolicy.NormalizeVersion(typeof(MainWindow).Assembly.GetName().Version!);
+        Check("local display matches actual application assembly", UpdatePolicy.Current == expectedVersion);
+        var events = new List<string>();
+        var candidate = new UpdateRelease(new Version(1,12,0), "v1.12.0", preferences.UpdateRepository, "review.exe", "", "");
+        var reviewPath = Path.Combine(directory, "review-download.bin");
+        var steps = new UpdateActions(
+            (_, _) => { events.Add("check"); return Task.FromResult<UpdateRelease?>(candidate); },
+            (_, _) => { events.Add("download"); File.WriteAllText(reviewPath,"demo"); return Task.FromResult(reviewPath); },
+            (_, _) => { events.Add("install"); return Task.CompletedTask; },
+            () => events.Add("restart"));
+        var oneClick = new UpdateWindow(preferences, actions: steps) { Owner = this }; oneClick.Show();
+        var oneButton = Nodes<Button>(oneClick).Single(b => b.Content?.ToString() == "一键更新并重启");
+        oneButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await oneClick.PendingUpdate!;
+        Check("single click checks downloads installs and restarts in order", string.Join(",",events) == "check,download,install,restart");
+        Check("old separate download button removed", !Nodes<Button>(oneClick).Any(b => b.Content?.ToString() == "下载更新"));
+        oneClick.Close(); events.Clear();
+        var latest = new UpdateWindow(preferences, actions: steps with { Check = (_,_) => Task.FromResult<UpdateRelease?>(null) }) {Owner=this}; latest.Show();
+        Nodes<Button>(latest).Single(b => b.Content?.ToString() == "一键更新并重启").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await latest.PendingUpdate!;
+        Check("already current does not download or restart", events.Count == 0 && Texts(latest).Any(t => t.Contains("无需更新"))); latest.Close();
+        var failed = new UpdateWindow(preferences, actions: steps with { Download = (_,_) => Task.FromException<string>(new IOException("review")) }) {Owner=this}; failed.Show();
+        var retryButton=Nodes<Button>(failed).Single(b => b.Content?.ToString() == "一键更新并重启");
+        retryButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await failed.PendingUpdate!;
+        Check("download failure retains client and permits retry", !events.Contains("install") && retryButton.IsEnabled && Texts(failed).Any(t=>t.Contains("当前版本未修改"))); failed.Close();
         Check("About exists in three-dot menu", BuildSettingsMenu().Items.OfType<MenuItem>().Any(i => i.Header?.ToString() == "关于…"));
         bool acknowledgedBeforeAbout = updateState.Acknowledged;
         OpenAbout(); await aboutWindow!.CheckLatestAsync(); await Task.Delay(100);

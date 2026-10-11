@@ -85,7 +85,7 @@ public partial class MainWindow : Window
             {
                 string setup = App.UpdateReviewInstaller;
                 string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(setup)));
-                var reviewRelease = new UpdateRelease(new Version(1,12,0), "v1.12.0", preferences.UpdateRepository, Path.GetFileName(setup), "", digest);
+                var reviewRelease = new UpdateRelease(UpdatePolicy.Current, "v" + UpdatePolicy.Current, preferences.UpdateRepository, Path.GetFileName(setup), "", digest);
                 await UpdateHandoff.LaunchAsync(setup, reviewRelease, new[] { "--demo", "--capture", Path.Combine(Path.GetDirectoryName(setup)!, "restarted.png") });
                 Application.Current.Shutdown(); return;
             }

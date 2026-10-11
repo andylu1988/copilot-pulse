@@ -25,6 +25,12 @@ public partial class MainWindow
     {
         if (App.Demo || App.Smoke) return;
         updateState = Store.Read<AutoUpdateState>("update-state.json") ?? new();
+        if (!Version.TryParse(updateState.Version, out var pending) || pending <= UpdatePolicy.Current)
+        {
+            AutoUpdatePolicy.Observe(updateState, null, preferences.UpdateRepository, DateTimeOffset.UtcNow);
+            updateState.LastAttemptUtc = null;
+            Store.Write("update-state.json", updateState);
+        }
         RefreshUpdateBadge();
         updateTimer.Tick += async (_, _) => await PollUpdatesAsync();
         updateTimer.Start();

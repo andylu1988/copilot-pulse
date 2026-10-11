@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CopilotPulse;
 
-internal sealed record UpdateTicket(int ParentId, DateTime ParentStartedUtc, string Application, string Installer, string Digest, string[] RestartArguments);
+internal sealed record UpdateTicket(int ParentId, DateTime ParentStartedUtc, string Application, string Installer, string Digest, string ExpectedVersion, string[] RestartArguments);
 
 internal static class UpdateHandoff
 {
@@ -21,7 +21,7 @@ internal static class UpdateHandoff
         await Task.Run(() => CopyRuntime(AppContext.BaseDirectory, stage));
         using var parent = Process.GetCurrentProcess();
         string ticketPath = Path.Combine(stage, "update-ticket.json");
-        File.WriteAllText(ticketPath, JsonSerializer.Serialize(new UpdateTicket(parent.Id, parent.StartTime.ToUniversalTime(), application, Path.GetFullPath(installer), release.Digest, reviewArguments ?? Array.Empty<string>())));
+        File.WriteAllText(ticketPath, JsonSerializer.Serialize(new UpdateTicket(parent.Id, parent.StartTime.ToUniversalTime(), application, Path.GetFullPath(installer), release.Digest, release.Version.ToString(), reviewArguments ?? Array.Empty<string>())));
         var start = new ProcessStartInfo(Path.Combine(stage, "CopilotPulse.exe")) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = stage };
         start.ArgumentList.Add("--apply-update"); start.ArgumentList.Add(ticketPath);
         using var helper = Process.Start(start) ?? throw new IOException("Update helper unavailable.");
@@ -76,14 +76,23 @@ internal static class UpdateHandoff
             using var setup = Process.Start(start) ?? throw new IOException("Installer unavailable.");
             // Never kill a running installer or launch a client while files are being replaced.
             await setup.WaitForExitAsync();
-            File.WriteAllText(ticketPath + ".result", "setup-exit=" + setup.ExitCode);
+            if (setup.ExitCode != 0) throw new IOException("Installer exited with code " + setup.ExitCode);
+            if (!Version.TryParse(ticket.ExpectedVersion, out var expected) || !UpdatePolicy.InstalledVersionMatches(ticket.Application, expected))
+                throw new IOException("Installed version does not match the requested release.");
+            File.WriteAllText(ticketPath + ".installed-version", expected.ToString());
+            File.WriteAllText(ticketPath + ".result", "setup-exit=0");
             Restart(ticket.Application, ticket.RestartArguments);
-            return setup.ExitCode;
+            return 0;
         }
         catch (Exception exception)
         {
             try { File.WriteAllText(ticketPath + ".result", "update-failed=" + exception.GetType().Name); } catch { }
-            if (parentExited && ticket != null) { try { Restart(ticket.Application, ticket.RestartArguments); } catch { } }
+            if (parentExited && ticket != null)
+            {
+                try { Restart(ticket.Application, ticket.RestartArguments); } catch { }
+                if (ticket.RestartArguments.Length == 0) System.Windows.MessageBox.Show(
+                    UiText.T("更新未完成：安装失败或安装后的版本不匹配。客户端已重新打开，请重试在线更新。", "Update did not complete: setup failed or the installed version did not match. The client has reopened; please retry."), "Copilot Pulse");
+            }
             return 1;
         }
     }

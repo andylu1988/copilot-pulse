@@ -4,7 +4,7 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.11.1 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.11.2 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -25,7 +25,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
 | 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
 | 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
-| 在线更新 | 每小时检查正式版本，主界面“迷你”左侧显示新版本提醒；未点击满 48 小时自动安装并重启。默认使用个人公开仓库，无需登录 GitHub。 |
+| 在线更新 | 一键完成下载、校验、安装和客户端重启；每小时检查正式版本，主界面“迷你”左侧显示新版本提醒；未点击满 48 小时自动安装并重启。默认使用个人公开仓库，无需登录 GitHub。 |
 | 数字字体 | 跟随皮肤或选择六种字体，完整 / 紧凑 / 迷你模式立即生效。 |
 | 阈值进度 | 主金额下持续显示金额阈值进度或最高账户配额百分比，低于警告线也能看到。 |
 | 本机历史 | 按月保存，重启后继续查看；升级与卸载保留历史和设置。 |
@@ -53,7 +53,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.11.0-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.11.2-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
@@ -189,9 +189,13 @@ dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-
 
 版本见 [CHANGELOG.md](CHANGELOG.md)，素材见 [矩阵背景](Assets/MATRIX-ART.md) 与 [当前应用图标](Assets/SELECTED-DESKTOP-ICON.md)。
 
+点击 **⋯ → 在线更新 → 一键更新并重启**，自动下载、校验、安装并重新打开客户端。当前版本来自实际运行程序，安装后会核对目标版本；已是最新版则不重复下载。
+
 ## English
 
 **Copilot Pulse puts your Copilot usage on the Windows desktop.** This unofficial widget reads the Microsoft internal Copilot Consumption page, with automatic refresh, enterprise details, local history, five time ranges, cumulative and change charts, three display modes, 22 built-in skins, and custom backgrounds.
+
+Use **⋯ → Online updates → Update and restart** for a single-click check, download, verification, silent installation and client restart. The local version comes from the running assembly, and setup verifies the installed target version. Up-to-date clients do not download again.
 
 Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. The personal repository is public. Access to the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
 

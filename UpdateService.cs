@@ -15,7 +15,15 @@ public sealed record UpdateRelease(Version Version, string Tag, string Repositor
 
 public static class UpdatePolicy
 {
-    public static readonly Version Current = new(1, 11, 0);
+    public static readonly Version Current = NormalizeVersion(typeof(UpdatePolicy).Assembly.GetName().Version ?? throw new InvalidOperationException("Application version unavailable."));
+    public static Version NormalizeVersion(Version version) => new(version.Major, version.Minor, Math.Max(0, version.Build));
+    public static bool InstalledVersionMatches(string application, Version expected)
+    {
+        string library = Path.Combine(Path.GetDirectoryName(application)!, "CopilotPulse.dll");
+        if (!File.Exists(library)) return false;
+        var info = FileVersionInfo.GetVersionInfo(library);
+        return NormalizeVersion(new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart)) == NormalizeVersion(expected);
+    }
     public static string Repository(string value) => value == "andylu_microsoft/copilot-pulse" ? value : "andylu1988/copilot-pulse";
     public static string ReleasePage(string repository) => "https://github.com/" + Repository(repository) + "/releases/latest";
     public static UpdateRelease? Parse(string json, string repository, Version current)
@@ -66,7 +74,7 @@ internal sealed class UpdateService
         else
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases/latest");
-            request.Headers.UserAgent.ParseAdd("CopilotPulse/1.11.0");
+            request.Headers.UserAgent.ParseAdd("CopilotPulse/" + UpdatePolicy.Current);
             using var response = await http.SendAsync(request, cancel);
             response.EnsureSuccessStatusCode();
             json = await response.Content.ReadAsStringAsync(cancel);

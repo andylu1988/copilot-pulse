@@ -1,5 +1,9 @@
 # 自动更新 / Automatic updates
 
+从 v1.11.2 起，“一键更新并重启”自动完成检查、下载、SHA256 校验、静默安装和客户端重启。版本号读取实际程序集，安装助手核对安装后的版本才报告成功；已是最新版时不再下载。更新不需要重启 Windows。
+
+From v1.11.2, **Update and restart** performs the entire check, download, SHA256 verification, silent installation and client restart. Version display and comparisons use the running assembly. The helper verifies the installed version before reporting success. An up-to-date client does not download again; Windows does not need to reboot.
+
 从 v1.11.0 起，应用运行时每小时检查所选仓库的最新正式版本。关闭应用时不会运行额外后台服务；重新打开会按上次检查时间继续检查。版本提醒与首次发现时间保存在数据目录的 `update-state.json`，不会因重启而重置。
 
 发现新版本后，主界面“迷你”左侧出现 **有新版本** 按钮，鼠标悬停可查看版本号和按系统时区显示的自动安装时间。后台预先下载 Windows x64 安装包并校验 GitHub 提供的 SHA256。如果用户一直不打开更新窗口，首次发现满 **48 小时** 后自动升级；打开更新窗口会取消该版本的无人值守安装，用户可选择手动安装。新版本发布后重新开始完整的 48 小时提醒期。

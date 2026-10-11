@@ -67,7 +67,8 @@ while (-not (Test-Path -LiteralPath $restarted) -and (Get-Date) -lt $deadline) {
 Check 'detached updater installs and automatically restarts client' (Test-Path -LiteralPath $restarted)
 $tickets = Get-ChildItem -LiteralPath (Split-Path $updateStage) -Filter 'update-ticket.json' -Recurse -File | Where-Object { ([IO.File]::ReadAllText($_.FullName) | ConvertFrom-Json).Installer -eq $updateSetup }
 Check 'updater helper confirms setup succeeded' (@($tickets).Count -eq 1 -and [IO.File]::ReadAllText($tickets[0].FullName + '.result') -eq 'setup-exit=0')
-Check 'automatic update preserves extra installed files' ([IO.File]::ReadAllText($sentinel) -eq 'installer-validation')
+Check 'updater verifies installed release version' ([IO.File]::ReadAllText($tickets[0].FullName + '.installed-version') -eq ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $payload 'CopilotPulse.dll')).FileVersion -replace '\.0$',''))
+Check 'automatic update preserves extra installed files'  ([IO.File]::ReadAllText($sentinel) -eq 'installer-validation')
 Check 'automatic update installed expected payload' ((Get-FileHash -LiteralPath (Join-Path $install 'CopilotPulse.dll')).Hash -eq (Get-FileHash -LiteralPath (Join-Path $payload 'CopilotPulse.dll')).Hash)
 # The capture client exits just after writing its image; wait for it to release installer files.
 Get-Process CopilotPulse -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq (Join-Path $install 'CopilotPulse.exe') } | ForEach-Object { if (-not $_.WaitForExit(15000)) { throw 'Restarted test client did not exit.' } }

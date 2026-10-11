@@ -169,6 +169,11 @@ Check("amount threshold percent is independent of quota", SettingsPolicy.QuotaPe
 Check("unknown quota remains unknown", SettingsPolicy.QuotaPercent(new Account { Cost = 200, Percent = 50 }) == null);
 options.NumberFont = "bogus"; SettingsPolicy.Normalize(options); Check("invalid font safely falls back", options.NumberFont == "skin");
 foreach (string font in SettingsPolicy.NumberFonts) { options.NumberFont = font; SettingsPolicy.Normalize(options); Check("font persists " + font, options.NumberFont == font); }
+var projectXml = System.Xml.Linq.XDocument.Load(Path.Combine(AppContext.BaseDirectory, "../../../../../CopilotPulse.csproj"));
+var declaredVersion = Version.Parse(projectXml.Descendants("Version").Single().Value);
+Check("runtime version follows project version", UpdatePolicy.Current == declaredVersion);
+Check("four part assembly version normalized", UpdatePolicy.NormalizeVersion(new Version(1,11,2,0)).ToString() == "1.11.2");
+Check("missing installed library cannot report success", !UpdatePolicy.InstalledVersionMatches(Path.Combine(directory,"CopilotPulse.exe"), declaredVersion));
 string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
 string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.12.0/CopilotPulse-Setup-1.12.0-x64.exe";
 string validDigest = "sha256:" + new string('a',64);
