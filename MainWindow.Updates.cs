@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -131,6 +133,24 @@ public partial class MainWindow
         }
         UsageProgress.Text = text;
         UsageProgress.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        bool warningActive = data != null && usageWarnings.Active(data, preferences).Count > 0;
+        if (warningActive)
+        {
+            UsageProgress.Foreground = new SolidColorBrush(Color.FromRgb(255, 215, 122));
+            MiniUsageProgress.Foreground = new SolidColorBrush(Color.FromRgb(255, 215, 122));
+            MiniUsageProgress.FontWeight = FontWeights.Bold;
+            MiniUsageProgress.Background = new SolidColorBrush(Color.FromRgb(56, 42, 18));
+            MiniUsageProgress.Padding = new Thickness(4, 1, 4, 1);
+            mini = "⚠ " + mini;
+        }
+        else
+        {
+            UsageProgress.SetResourceReference(TextBlock.ForegroundProperty, "SkinAccent");
+            MiniUsageProgress.SetResourceReference(TextBlock.ForegroundProperty, "SkinText");
+            MiniUsageProgress.FontWeight = FontWeights.Normal;
+            MiniUsageProgress.Background = Brushes.Transparent;
+            MiniUsageProgress.Padding = new Thickness(0);
+        }
         MiniUsageProgress.Text = mini;
         MiniUsageProgress.ToolTip = text;
     }

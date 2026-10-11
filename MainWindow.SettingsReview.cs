@@ -62,10 +62,35 @@ public partial class MainWindow
         preferences.WarningEnabled = true; preferences.WarningMode = "amount"; preferences.WarningAmount = 1000; ApplySettings();
         Check("warning visible", WarningBox.Visibility == Visibility.Visible);
         Capture(Path.Combine(directory, "widget-warning.png"));
+        Check("warning title Chinese", WarningTitle.Text == "用量警告 · 已达到阈值");
+        Check("mini warning badge active", MiniUsageProgress.Text.StartsWith("⚠ ") && MiniUsageProgress.FontWeight == FontWeights.Bold);
+        Check("warning above history", WarningBox.TranslatePoint(new Point(0, 0), ContentStack).Y < HistoryNetGrowth.TranslatePoint(new Point(0, 0), ContentStack).Y);
+        preferences.Language = "en"; ApplySettings();
+        Check("warning title English", WarningTitle.Text == "Usage warning · Threshold reached");
+        preferences.SkinId = "matrix"; ApplySettings(); SetDisplayMode("compact"); Capture(Path.Combine(directory, "warning-compact-matrix-en.png"));
+        SetDisplayMode("full");
+        preferences.Language = "zh-CN"; preferences.HistoryRange = "month"; ApplySettings();
+        await RefreshMiniHistoryAsync();
+        Check("demo month total and growth agree", demoHistory!.First().Total == 0 && demoHistory!.Last().Total == data!.Total && HistoryMath.NetChange(HistoryMath.Series(demoHistory!, null)) == data.Total);
+        foreach (string skin in new[] { "matrix", "eink" })
+        {
+            preferences.SkinId = skin; ApplySettings(); await Task.Delay(160);
+            Check("warning fixed contrast " + skin, WarningBox.Background.ToString() == "#FF382A12" && WarningText.Foreground.ToString() == "#FFFFF0CF");
+            SetDisplayMode("full"); Capture(Path.Combine(directory, "warning-full-" + skin + ".png"));
+            SetDisplayMode("compact"); Capture(Path.Combine(directory, "warning-compact-" + skin + ".png"));
+            SetDisplayMode("mini"); Capture(Path.Combine(directory, "warning-mini-" + skin + ".png"));
+        }
+        SetDisplayMode("full"); preferences.SkinId = "midnight"; ApplySettings();
+
         preferences.WarningEnabled = false; ApplySettings(); Check("warning disabled hidden", WarningBox.Visibility == Visibility.Collapsed);
+        Check("mini warning clears when disabled", !MiniUsageProgress.Text.StartsWith("⚠ ") && MiniUsageProgress.FontWeight == FontWeights.Normal);
         preferences.WarningEnabled = true; preferences.WarningMode = "amount"; preferences.WarningAmount = 2000; ApplySettings();
         Check("below-threshold progress remains visible", UsageProgress.Visibility == Visibility.Visible && UsageProgress.Text.Contains("61.73%") && WarningBox.Visibility == Visibility.Collapsed);
+        Check("mini warning clears below threshold", !MiniUsageProgress.Text.StartsWith("⚠ "));
         Capture(Path.Combine(directory, "widget-threshold-progress.png"));
+        preferences.SkinId = "matrix"; ApplySettings(); SetDisplayMode("compact"); Capture(Path.Combine(directory, "threshold-compact-matrix.png"));
+        preferences.Language = "en"; ApplySettings(); Capture(Path.Combine(directory, "threshold-compact-matrix-en.png"));
+        preferences.Language = "zh-CN"; preferences.SkinId = "midnight"; ApplySettings(); SetDisplayMode("full");
         foreach (string font in SettingsPolicy.NumberFonts)
         {
             preferences.NumberFont = font; ApplySettings(); await Task.Delay(40);

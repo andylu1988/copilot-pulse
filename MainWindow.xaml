@@ -26,6 +26,12 @@
       <Grid Margin="0,0,0,8"><TextBlock Text="本月内部用量" FontSize="13" Foreground="{DynamicResource SkinMuted}"/><Border HorizontalAlignment="Right" Background="{DynamicResource SkinHover}" CornerRadius="6" Padding="8,3"><TextBlock x:Name="MonthLabel" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SkinMuted}"/></Border></Grid>
       <local:MoneyReadout x:Name="FullAmount" Height="61"/>
       <TextBlock x:Name="UsageProgress" FontSize="11" Foreground="{DynamicResource SkinAccent}" Margin="1,4,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+      <Border x:Name="WarningBox" Visibility="Collapsed" CornerRadius="10" Background="#382A12" BorderBrush="#FFC857" BorderThickness="1.5" Padding="12,10" Margin="0,10,0,2">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid Width="23" Height="23" VerticalAlignment="Top" Margin="0,1,10,0"><Path Fill="#FFC857" Data="M11.5,1 L23,22 L0,22 Z"/><TextBlock Text="!" Foreground="#382A12" FontFamily="Segoe UI" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/></Grid>
+          <StackPanel Grid.Column="1"><TextBlock x:Name="WarningTitle" Text="用量警告 · 已达到阈值" Foreground="#FFD77A" FontSize="13" FontWeight="Bold" TextWrapping="Wrap"/><TextBlock x:Name="WarningText" Foreground="#FFF0CF" FontSize="12" LineHeight="19" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+        </Grid>
+      </Border>
       <StackPanel Orientation="Horizontal" Margin="1,8,0,0"><TextBlock Text="INTERNAL USD" Foreground="{DynamicResource SkinFaint}" FontSize="10" FontWeight="SemiBold"/><TextBlock Text=" · " Foreground="{DynamicResource SkinFaint}" FontSize="10"/><TextBlock x:Name="AccountsLabel" Text="等待连接数据源" Foreground="{DynamicResource SkinMuted}" FontSize="10"/></StackPanel>
       <Button Click="OpenHistory" HorizontalContentAlignment="Stretch" Padding="11,8" Background="{DynamicResource SkinChart}" Margin="0,14,0,0" ToolTip="打开用量历史" AutomationProperties.Name="打开用量历史">
         <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="142"/></Grid.ColumnDefinitions>
@@ -42,7 +48,6 @@
         </Border>
         <TextBlock Text="Monthly limit 为使用上限，不代表预算。" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="1,4,0,0"/>
       </StackPanel>
-      <Border x:Name="WarningBox" Visibility="Collapsed" CornerRadius="9" Background="{DynamicResource SkinHover}" Padding="10,9" Margin="0,12,0,0"><TextBlock x:Name="WarningText" Foreground="{DynamicResource SkinAccent}" FontSize="11" TextWrapping="Wrap"/></Border>
       <Border x:Name="AlertBox" Visibility="Collapsed" CornerRadius="9" Background="#352D23" Padding="10,9" Margin="0,15,0,0"><TextBlock x:Name="AlertText" Foreground="#EAC58D" FontSize="11" TextWrapping="Wrap" LineHeight="18"/></Border>
       <Border Height="1" Background="{DynamicResource SkinEdge}" Margin="0,21,0,14"/>
       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -56,7 +61,7 @@
   </ScrollViewer>
   <Grid x:Name="MiniHost" Margin="8" Height="114" Visibility="Collapsed" MouseLeftButtonDown="MiniMouseDown" MouseRightButtonUp="MiniContextMenu" MouseEnter="MiniEnter" MouseLeave="MiniLeave">
     <local:MoneyReadout x:Name="MiniDisplay" Tile="True" Height="96" VerticalAlignment="Top"/>
-    <TextBlock x:Name="MiniUsageProgress" FontSize="8" Foreground="{DynamicResource SkinText}" Margin="14,0,14,1" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
+    <TextBlock x:Name="MiniUsageProgress" FontSize="10" Foreground="{DynamicResource SkinText}" Margin="14,0,14,1" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
     <Border x:Name="MiniTools" Background="{DynamicResource SkinPanel}" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,23" Visibility="Collapsed" Opacity="0">
       <StackPanel Orientation="Horizontal">
         <Button Content="展开" FontSize="9" Padding="5,3" Click="ExpandMini" ToolTip="展开完整模式"/>

@@ -52,6 +52,7 @@ public partial class MainWindow
         string message = preferences.WarningMode == "amount"
             ? UiText.T($"本月用量已达 {Money(data.Total)}，警告阈值 {Money(preferences.WarningAmount)}。", $"Monthly usage {Money(data.Total)} reached your {Money(preferences.WarningAmount)} warning threshold.")
             : UiText.T($"{active.Count} 个账户已达到 {preferences.WarningPercent:0.##}% 配额警告阈值。", $"{active.Count} account(s) reached the {preferences.WarningPercent:0.##}% quota warning threshold.");
+        WarningTitle.Text = UiText.T("用量警告 · 已达到阈值", "Usage warning · Threshold reached");
         WarningText.Text = message;
         if (notify && !App.Demo && !App.Smoke && tray != null && usageWarnings.ShouldNotify(data, preferences))
             tray.ShowBalloonTip(7000, UiText.T("Copilot Pulse · 用量警告", "Copilot Pulse · Usage warning"), message, System.Windows.Forms.ToolTipIcon.Warning);

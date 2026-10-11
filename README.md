@@ -4,7 +4,7 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.11.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.11.1 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -93,13 +93,19 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ### 阈值进度与警告通知
 
-开启 **⋯ → 设置… → 用量警告**，选择金额或配额百分比阈值并应用。达到阈值后，主面板显示警告；成功同步时会发出 Windows 通知。
+在 **⋯ → 设置… → 用量警告** 中启用警告，选择“本月合计金额”或“各账户配额百分比”，填写阈值后点击“应用”或按 Enter。警告默认关闭。
 
-下图展示 **紧凑面板 · 数字矩阵皮肤**：虚构本月用量 **$1,234.56**，金额警告阈值 **$1,000.00**，达到阈值的 **123.46%**。右侧通知使用应用实际警告文案。
+**阈值进度：未达到警告线也能看到。** 金额模式按 `本月总额 ÷ 金额阈值 × 100%` 计算。下图虚构用量 **$1,234.56**，阈值 **$2,000.00**，进度 **61.73%**，因此没有警告条。配额模式显示最高账户的配额使用百分比；没有具体数字配额时显示不可计算。
 
-![紧凑矩阵面板与 Windows 用量警告通知示意，虚构数据](docs/screenshots/usage-warning-notification.png)
+<img src="docs/screenshots/threshold-progress-matrix.png" width="408" alt="紧凑矩阵面板阈值进度61.73%，模拟数据">
 
-*左侧为 v1.11.0 实际控件的隔离示例截图；右侧为 Windows 通知示意，实际样式取决于系统。金额、账户与趋势均为虚构数据。*
+**达到阈值后的界面警告与通知。** 下图把金额阈值设为 **$1,000.00**，同一用量达到 **123.46%**，超过阈值 **$234.56**。完整及紧凑面板在金额附近显示高对比琥珀色警告条、图标和文字；迷你模式显示带深色底的琥珀色警告标识及进度。
+
+![紧凑矩阵面板与 Windows 用量警告通知示意，模拟数据](docs/screenshots/usage-warning-notification.png)
+
+成功同步且达到阈值时发出 Windows 通知；本次运行中相同账户、UTC 配额月份与阈值只提醒一次，重启或修改阈值后可再次提醒。系统通知是否出现受 Windows 通知设置影响。降低用量至阈值以下或关闭警告后，界面警告消失，进度继续显示。
+
+*以上为 v1.11.1 实际控件的示例截图，金额、账户与趋势均为虚构数据。示例本月从 UTC 月初 $0 增长到 $1,234.56，因此本月净增长也为 +$1,234.56；真实历史只计算已采集区间，不补造月初数据。通知卡片为 Windows 通知示意，实际样式取决于系统。*
 
 窗口背景、标题、普通文字和金额区域均可拖动；按钮、输入框、滑块和图表继续响应原有操作。Windows 更改时区后，应用会在一分钟内重新读取；“今天”按本机午夜，配额月份按 UTC 00:00。
 
@@ -196,6 +202,20 @@ Open **⋯ → Settings…**, or right-click the mini widget / tray icon. Choose
 
 Warnings are disabled by default. Choose a per-account numeric quota percentage (1–100%) or monthly total amount ($0.01–$1,000,000,000). Unknown quotas do not trigger percentage warnings. During each app session, each account/threshold warns once per UTC quota month; restarting permits another notification. Windows notification settings apply.
 
-The [warning notification example](docs/screenshots/usage-warning-notification.png) pairs an actual v1.11.0 compact Matrix widget capture with an illustrated Windows notification. Synthetic monthly usage of $1,234.56 reaches 123.46% of a $1,000.00 amount threshold. The notification wording matches the application; actual Windows appearance varies by system.
+### Threshold progress and usage warnings
+
+Open **⋯ → Settings… → Usage warnings**, enable warnings, select the monthly total amount or per-account quota percentage, enter a threshold, and click **Apply** or press Enter. Warnings are off by default.
+
+**Progress stays visible below the warning threshold.** Amount mode uses `monthly total / amount threshold × 100%`. In this synthetic example, **$1,234.56 / $2,000.00 = 61.73%**, so no warning banner appears. Quota mode shows the highest per-account quota percentage. An unknown numeric quota is explicitly shown as unavailable.
+
+<img src="docs/screenshots/threshold-progress-matrix-en.png" width="408" alt="Compact Matrix threshold progress at 61.73%, synthetic data">
+
+**When the threshold is reached.** With a **$1,000.00** amount threshold, the same usage reaches **123.46%**, or **$234.56** above the threshold. Full and compact widgets show an amber banner, warning icon and clear text near the amount. Mini mode shows an amber warning badge and progress on a dark background.
+
+![Compact Matrix warning and illustrated Windows notification, synthetic data](docs/screenshots/usage-warning-notification-en.png)
+
+A successful sync at or above the threshold triggers a Windows notification. Each account/UTC quota month/threshold notifies once per app session; restarting or changing the threshold permits another notification. Windows notification settings apply. The warning clears when usage falls below the threshold or warnings are disabled; progress remains visible.
+
+*These v1.11.1 captures use actual controls with synthetic accounts, amounts and history. The example starts at $0 at UTC month start and ends at $1,234.56, giving +$1,234.56 monthly net growth. Real history compares collected readings and does not invent a month-start baseline. The notification card is an illustration; actual Windows appearance varies.*
 
 Windows timezone and the next UTC month reset in local time are displayed in Preferences. Today starts at local midnight; monthly quota periods start at UTC midnight. Drag ordinary text, amounts or background areas to move windows. Links open the usage page and guides in your default browser.

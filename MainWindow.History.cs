@@ -53,7 +53,7 @@ public partial class MainWindow
             HistoryNetGrowth.ToolTip = UiText.Translate(HistoryNetGrowth.ToolTip?.ToString() ?? "");
             miniHistoryUpdated = now;
             MiniHistory.SetData(points, from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
-            HistorySummary.Text = App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开";
+            HistorySummary.Text = UiText.Translate(App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { HistorySummary.Text = "历史暂不可读 · 点击查看"; HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 —"; }
     }
@@ -73,16 +73,15 @@ public partial class MainWindow
     {
         var result = new List<HistoryFrame>();
         DateTimeOffset now = DateTimeOffset.Now;
-        decimal first = 1000m, second = 20m;
+        DateTimeOffset monthStart = HistoryRanges.Start("month", now);
         for (int i = 0; i < 100; i++)
         {
-            // Synthetic QA data stays in memory and is labelled on every preview.
-            if (i == 48 || i == 49) continue;
-            first += i % 8 == 0 ? 0.72m : i % 3 == 0 ? 0.14m : 0.03m;
-            second += i % 13 == 0 ? 0.06m : 0;
-            if (i == 76) first -= 0.21m;
-            DateTimeOffset time = now.AddMinutes((i - 99) * 3);
-            result.Add(new HistoryFrame { Time = time, Period = HistoryRanges.Period(time), Cadence = 60, Total = first + second, Accounts = new() {
+            // In-memory synthetic month: zero at UTC month start, ending at the demo card total.
+            decimal fraction = i / 99m;
+            decimal first = decimal.Round(1200m * fraction, 2);
+            decimal second = decimal.Round(34.56m * fraction, 2);
+            DateTimeOffset time = monthStart.AddTicks((now - monthStart).Ticks * i / 99);
+            result.Add(new HistoryFrame { Time = time, Period = HistoryRanges.Period(time), Cadence = Math.Max(60, (int)((now - monthStart).TotalSeconds / 99)), Total = first + second, Accounts = new() {
                 new HistoryAccount { Name = "Example Enterprise", Login = "demo-emu", Cost = first },
                 new HistoryAccount { Name = "Example Organization", Login = "demo-user", Cost = second }
             } });
