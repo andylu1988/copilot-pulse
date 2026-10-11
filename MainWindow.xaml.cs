@@ -158,14 +158,16 @@ public partial class MainWindow : Window
         amountRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         amountRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var amount = Text(Money(account.Cost), 21, "#EAF1FD", true);
+        amount.FontFamily = new FontFamily(SettingsPolicy.ResolveFont("Segoe UI", preferences));
         var amountBox = new Viewbox { Height = 28, HorizontalAlignment = HorizontalAlignment.Left, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, Child = amount, Margin = new Thickness(0, 0, 8, 0) };
         amountRow.Children.Add(amountBox);
-        var pct = Text(account.Percent.ToString("0.00", Us) + "%", 13, accent, true); pct.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(pct, 1); amountRow.Children.Add(pct); content.Children.Add(amountRow);
+        decimal? quotaPercent = SettingsPolicy.QuotaPercent(account);
+        var pct = Text(quotaPercent.HasValue ? quotaPercent.Value.ToString("0.00", Us) + "%" : "—", 13, accent, true); pct.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(pct, 1); amountRow.Children.Add(pct); content.Children.Add(amountRow);
         var rail = new Border { Background = Brush("#2B3950"), Height = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 10, 0, 10), ClipToBounds = true };
         var fill = new Border { Background = Brush(accent), CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Left };
         rail.Child = fill;
-        rail.SizeChanged += (_, _) => fill.Width = Math.Clamp(account.Percent / 100.0, 0, 1) * rail.ActualWidth;
-        rail.ToolTip = $"已使用 {account.Percent:0.00}%";
+        rail.SizeChanged += (_, _) => fill.Width = Math.Clamp((double)(quotaPercent ?? 0) / 100.0, 0, 1) * rail.ActualWidth;
+        rail.ToolTip = quotaPercent.HasValue ? UiText.T($"已使用 {quotaPercent:0.00}%", $"Used {quotaPercent:0.00}%") : UiText.T("页面未提供具体限额，无法计算配额百分比。", "No numeric quota is available.");
         content.Children.Add(rail);
         var limit = new Grid();
         limit.Children.Add(Text("MONTHLY LIMIT", 8, "#617A9D", true));
@@ -242,6 +244,7 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
         var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
+        var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
         menu.Items.Add(BuildDisplayModeMenu());
         menu.Items.Add(BuildSkinMenu());
         var motion = new MenuItem { Header = "减少动态效果", IsCheckable = true, IsChecked = preferences.ReduceMotion };

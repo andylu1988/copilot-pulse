@@ -9,10 +9,15 @@ public static class SettingsPolicy
 {
     public static readonly int[] RefreshOptions = { 15, 30, 60, 120, 300, 600 };
     public static readonly int[] FpsOptions = { 10, 15, 20, 30, 60 };
+    public static readonly string[] NumberFonts = { "skin", "Segoe UI", "Bahnschrift", "Consolas", "Cascadia Mono", "Georgia", "Impact" };
+    public static string ResolveFont(string fallback, Preferences p) => p.NumberFont == "skin" ? fallback : p.NumberFont;
+    public static decimal? QuotaPercent(Account a) => a.Limit > 0 ? a.Cost / a.Limit.Value * 100 : null;
     public static void Normalize(Preferences p)
     {
         if (!RefreshOptions.Contains(p.RefreshSeconds)) p.RefreshSeconds = 60;
         if (!FpsOptions.Contains(p.AnimationFps)) p.AnimationFps = 20;
+        if (!NumberFonts.Contains(p.NumberFont)) p.NumberFont = "skin";
+        if (p.UpdateRepository != "andylu_microsoft/copilot-pulse") p.UpdateRepository = "andylu1988/copilot-pulse";
         p.Language = p.Language == "en" ? "en" : "zh-CN";
         p.WarningMode = p.WarningMode == "amount" ? "amount" : "percent";
         p.WarningPercent = Math.Clamp(p.WarningPercent, 1, 100);

@@ -23,6 +23,7 @@
       </Grid>
       <Grid Margin="0,0,0,8"><TextBlock Text="本月内部用量" FontSize="13" Foreground="{DynamicResource SkinMuted}"/><Border HorizontalAlignment="Right" Background="{DynamicResource SkinHover}" CornerRadius="6" Padding="8,3"><TextBlock x:Name="MonthLabel" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SkinMuted}"/></Border></Grid>
       <local:MoneyReadout x:Name="FullAmount" Height="61"/>
+      <TextBlock x:Name="UsageProgress" FontSize="11" Foreground="{DynamicResource SkinAccent}" Margin="1,4,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
       <StackPanel Orientation="Horizontal" Margin="1,8,0,0"><TextBlock Text="INTERNAL USD" Foreground="{DynamicResource SkinFaint}" FontSize="10" FontWeight="SemiBold"/><TextBlock Text=" · " Foreground="{DynamicResource SkinFaint}" FontSize="10"/><TextBlock x:Name="AccountsLabel" Text="等待连接数据源" Foreground="{DynamicResource SkinMuted}" FontSize="10"/></StackPanel>
       <Button Click="OpenHistory" HorizontalContentAlignment="Stretch" Padding="11,8" Background="{DynamicResource SkinChart}" Margin="0,14,0,0" ToolTip="打开用量历史" AutomationProperties.Name="打开用量历史">
         <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="142"/></Grid.ColumnDefinitions>
@@ -51,9 +52,10 @@
   </Border>
   </Border>
   </ScrollViewer>
-  <Grid x:Name="MiniHost" Margin="8" Height="96" Visibility="Collapsed" MouseLeftButtonDown="MiniMouseDown" MouseRightButtonUp="MiniContextMenu" MouseEnter="MiniEnter" MouseLeave="MiniLeave">
-    <local:MoneyReadout x:Name="MiniDisplay" Tile="True"/>
-    <Border x:Name="MiniTools" Background="{DynamicResource SkinPanel}" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,5" Visibility="Collapsed" Opacity="0">
+  <Grid x:Name="MiniHost" Margin="8" Height="114" Visibility="Collapsed" MouseLeftButtonDown="MiniMouseDown" MouseRightButtonUp="MiniContextMenu" MouseEnter="MiniEnter" MouseLeave="MiniLeave">
+    <local:MoneyReadout x:Name="MiniDisplay" Tile="True" Height="96" VerticalAlignment="Top"/>
+    <TextBlock x:Name="MiniUsageProgress" FontSize="8" Foreground="{DynamicResource SkinText}" Margin="14,0,14,1" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
+    <Border x:Name="MiniTools" Background="{DynamicResource SkinPanel}" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,23" Visibility="Collapsed" Opacity="0">
       <StackPanel Orientation="Horizontal">
         <Button Content="展开" FontSize="9" Padding="5,3" Click="ExpandMini" ToolTip="展开完整模式"/>
         <Button Content="换肤" FontSize="9" Padding="5,3" Click="OpenSkins" ToolTip="选择皮肤"/>

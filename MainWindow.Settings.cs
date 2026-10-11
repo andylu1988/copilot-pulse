@@ -44,6 +44,7 @@ public partial class MainWindow
     }
     private void EvaluateWarning(bool notify)
     {
+        RefreshUsageProgress();
         if (data == null) return;
         var active = usageWarnings.Active(data, preferences);
         WarningBox.Visibility = active.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -125,6 +126,10 @@ internal sealed class SettingsWindow : Window
         var motion = new CheckBox { Content = UiText.T("减少动态效果", "Reduce motion"), IsChecked = preferences.ReduceMotion, Margin = new Thickness(0, 4, 0, 0) };
         motion.SetResourceReference(Control.ForegroundProperty, "SkinText");
         motion.Click += (_, _) => { preferences.ReduceMotion = motion.IsChecked == true; changed(); }; body.Children.Add(motion);
+        Section("数字字体", "Number font");
+        Choices(Array.ConvertAll(SettingsPolicy.NumberFonts, f => f == "skin" ? UiText.T("跟随皮肤（液晶 / 像素 / 辉光管）", "Follow skin (LCD / pixels / nixie)") : f), Array.IndexOf(SettingsPolicy.NumberFonts, preferences.NumberFont), i => { preferences.NumberFont = SettingsPolicy.NumberFonts[i]; changed(); Build(); });
+        var fontPreview = Label("$1,234.56  ·  78.90%", 26);
+        fontPreview.FontFamily = new FontFamily(SettingsPolicy.ResolveFont("Segoe UI", preferences));
         Section("用量警告", "Usage warnings");
         var warning = new CheckBox { Content = UiText.T("启用警告（界面提示 + 系统通知）", "Enable warnings (widget + system notification)"), IsChecked = preferences.WarningEnabled, Margin = new Thickness(0, 0, 0, 9) };
         warning.SetResourceReference(Control.ForegroundProperty, "SkinText");
@@ -140,6 +145,10 @@ internal sealed class SettingsWindow : Window
         error = Label("", 11); error.Foreground = Brushes.OrangeRed;
         Label(UiText.T("百分比范围 1–100；金额范围 $0.01–$1,000,000,000。未提供具体限额的账户仅支持金额警告。本次运行中，同月同阈值只提醒一次；新月份或重启后重新提醒。", "Percent: 1–100; amount: $0.01–$1,000,000,000. Accounts without a numeric quota support amount warnings only. Within each app session, each threshold warns once per UTC quota month; restarting allows a new notification."), 10);
         Section("系统时间与配额重置", "System time and quota reset"); zoneText = Label("", 11); resetText = Label("", 11); UpdateClock();
+        Section("在线更新", "Online updates");
+        var updates = new Button { Content = UiText.T("检查新版本 / 下载更新…", "Check version / download update…"), Padding = new Thickness(10,8,10,8), HorizontalAlignment = HorizontalAlignment.Left };
+        updates.Click += (_, _) => { if (Owner is MainWindow main) main.OpenUpdates(); }; body.Children.Add(updates);
+        Label(UiText.T("默认使用个人公开仓库，无需登录 GitHub。也可选择 EMU 私有仓库。更新保留历史、登录和设置。", "Updates use the public personal repository without GitHub sign-in. The private EMU mirror is optional. Updates retain history, sign-in and preferences."), 10);
         Section("网页链接", "Web links");
         var links = new WrapPanel();
         void Link(string label, string url) { var button = new Button { Content = label + " ↗", Margin = new Thickness(0, 0, 6, 6), Padding = new Thickness(9, 6, 9, 6) }; button.Click += (_, _) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); links.Children.Add(button); }

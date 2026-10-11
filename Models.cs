@@ -46,6 +46,8 @@ public sealed class Preferences
     public int RefreshSeconds { get; set; } = 60;
     public string Language { get; set; } = "zh-CN";
     public int AnimationFps { get; set; } = 20;
+    public string NumberFont { get; set; } = "skin";
+    public string UpdateRepository { get; set; } = "andylu1988/copilot-pulse";
     public bool WarningEnabled { get; set; }
     public string WarningMode { get; set; } = "percent";
     public decimal WarningPercent { get; set; } = 80;

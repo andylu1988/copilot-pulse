@@ -1,6 +1,6 @@
 ﻿# Copilot Pulse 介绍与使用指南
 
-**适用版本：1.9.9 · Windows 10 1809+ / Windows 11 · x64**
+**适用版本：1.10.0 · Windows 10 1809+ / Windows 11 · x64**
 
 Copilot Pulse 把 Microsoft 内部 Copilot Consumption 页面变成桌面仪表盘。平时用迷你框看总金额，需要了解增长时展开历史，也可以换上矩阵雨、液晶、霓虹或机甲风格，让它融入自己的桌面。
 
@@ -39,12 +39,12 @@ Copilot Pulse 把 Microsoft 内部 Copilot Consumption 页面变成桌面仪表�
 | --- | --- |
 | 系统 | Windows 10 1809+ / Windows 11，x64。 |
 | 账户与网络 | 自己的账户能访问内部页面，并满足组织网络与登录策略。 |
-| 下载权限 | 当前 GitHub 仓库为私有仓库，需要仓库访问权限。 |
+| 下载权限 | 个人仓库公开，可直接下载；EMU 镜像需要仓库访问权限。 |
 | 运行环境 | 安装包自带 .NET 8 Desktop Runtime；缺少 WebView2 时安装官方运行环境。 |
 
 ### 安装步骤
 
-1. 在 [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.9.9-x64.exe`。
+1. 在 [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.10.0-x64.exe`。
 2. 双击按向导安装，可勾选桌面快捷方式。默认位置：`%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 缺少 WebView2 时，等待微软官方引导程序联网完成安装。
 4. 从桌面快捷方式或开始菜单启动 Copilot Pulse。
@@ -258,7 +258,7 @@ WebView2 登录会话另行管理，常规桌面运行位置为 `%LOCALAPPDATA%\
 
 分享 Release 安装包和本文档即可，对方登录自己的 corp 账户，仍需满足源站、设备与登录策略，不能保证每台机器静默 SSO。
 
-不要分享自己的数据目录、WebView2 会话、真实截图或整个已运行目录。仓库为私有，未授权用户无法直接打开下载链接，应通过允许的共享方式提供安装包。
+不要分享自己的数据目录、WebView2 会话、真实截图或整个已运行目录。可分享个人公开仓库的 Releases 安装包链接；每位使用者仍需具有内部用量网页的访问权限。
 
 ## 9. 常见问题
 
@@ -287,3 +287,19 @@ WebView2 登录会话另行管理，常规桌面运行位置为 `%LOCALAPPDATA%\
 当前版本是桌面悬浮组件与托盘入口，没有嵌入开始按钮所在任务栏的数字栏位，也没有内置预算告警、免打扰时段、CSV 导出或界面语言切换。退出后不采集。
 
 这是非官方工具。介绍结构参考 [mcaps-microsoft/copilot-usage-monitor](https://github.com/mcaps-microsoft/copilot-usage-monitor)，功能、SSO、安装与存储说明按 Copilot Pulse 实际实现编写。构建方法见 [项目首页](../README.md)，素材见 [矩阵背景](../Assets/MATRIX-ART.md) 与 [当前图标](../Assets/SELECTED-DESKTOP-ICON.md)。
+
+## v1.10.0：更新、字体和阈值进度
+
+打开主卡片 ⋯ → 设置，选择“数字字体”。默认跟随皮肤，保留液晶七段、像素和辉光管；其他字体覆盖数字外观，背景动画继续保留。选项包括 Segoe UI、Bahnschrift、Consolas、Cascadia Mono、Georgia、Impact，缺少字体时 Windows 会回退。金额会随容器缩放，避免长数字溢出。
+
+启用金额警告后，主金额下面显示本月合计相对金额阈值的比例，例如 $600 / $1,000 = 60%。超过阈值允许显示大于 100%。这表示自定义警告线进度。配额模式显示最高单账户的 Cost / Monthly limit；不会把不同账户配额简单相加。页面没有数字限额时显示不可计算。提示在完整、紧凑与迷你模式都会刷新，达到警告线后仍另有警告和通知。
+
+设置 → 在线更新，默认选择个人公开仓库，点击“检查更新”。无需安装 GitHub CLI 或登录 GitHub。应用只选择比当前更高的正式版本，下载并校验 SHA256 后，点击“安装并退出”完成升级。若选择 EMU 私有镜像，需要已登录且有访问权限的 GitHub CLI 账户；应用不保存其凭据。也可以点击“浏览器下载”打开 Releases。Microsoft 页面 SSO 与 GitHub 登录独立。
+
+点击“下载更新”后校验 GitHub 发布资产的 SHA256。校验通过才启用“安装并退出”；点击后退出组件并打开安装向导，按向导完成覆盖升级，完成后启动新版本。历史、登录状态和偏好设置存放在安装目录外，会保留。发布需要带正确名称的 Windows x64 安装器和 GitHub SHA256 摘要；旧版本没有摘要时使用浏览器下载。
+
+更新不会在后台自动安装。开发者访问密钥不会包含在安装包中。无仓库权限的用户需要项目维护者授予访问权限。
+
+![在线更新窗口，公开仓库无需登录](screenshots/online-update.png)
+
+![金额阈值进度，示例数据](screenshots/widget-threshold-progress.png)

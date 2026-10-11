@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
-  <ItemGroup><Compile Include="../../History.cs" Link="History.cs"/><Compile Include="../../DataStorage.cs" Link="DataStorage.cs"/><Compile Include="../../SettingsPolicy.cs" Link="SettingsPolicy.cs"/><Compile Include="../../Models.cs" Link="Models.cs"/></ItemGroup>
+  <ItemGroup><Compile Include="../../UpdateService.cs" Link="UpdateService.cs"/><Compile Include="../../History.cs" Link="History.cs"/><Compile Include="../../DataStorage.cs" Link="DataStorage.cs"/><Compile Include="../../SettingsPolicy.cs" Link="SettingsPolicy.cs"/><Compile Include="../../Models.cs" Link="Models.cs"/></ItemGroup>
 </Project>

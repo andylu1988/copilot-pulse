@@ -1,6 +1,6 @@
-﻿Copilot Pulse 1.9.9 · Windows 安装版
+﻿Copilot Pulse 1.10.0 · Windows 安装版
 
-安装：双击 CopilotPulse-Setup-1.9.9-x64.exe，按提示完成安装。
+安装：双击 CopilotPulse-Setup-1.10.0-x64.exe，按提示完成安装。
 支持 Windows 10（1809 或更新）/11 x64。默认按当前用户安装，不需要管理员权限。
 自带 .NET 运行环境；若电脑缺少 WebView2，安装程序会使用微软官方引导程序联网安装。
 桌面快捷方式可在安装过程中选择，开始菜单中也能打开组件。

@@ -81,12 +81,14 @@ internal static partial class DisplayArt
     {
         if(!value.HasValue) { CenterText(dc,box,"—",p,Math.Min(38,box.Height),dpi); return; }
         string text=value.Value.ToString("C2",Us);
-        if (Geek(p.Id)) { GeekMoney(dc, box, text, p, dpi); return; }
-        if(p.Id=="lcd") { SevenSegment(dc,box,text,p); return; }
-        if(p.Id is "terminal" or "arcade") { Pixels(dc,box,text,p); return; }
-        if(p.Id=="nixie") { Tubes(dc,box,text,p,time,pulse,dpi); return; }
+        bool skinFont = SkinTheme.Settings.NumberFont == "skin";
+        if (skinFont && Geek(p.Id)) { GeekMoney(dc, box, text, p, dpi); return; }
+        if(skinFont && (p.Id=="lcd")) { SevenSegment(dc,box,text,p); return; }
+        if(skinFont && (p.Id is "terminal" or "arcade")) { Pixels(dc,box,text,p); return; }
+        if(skinFont && (p.Id=="nixie")) { Tubes(dc,box,text,p,time,pulse,dpi); return; }
         double size=Math.Min(43,box.Height*1.03);
         var font=p.Id is "cyber" or "eink" or "mecha" or "matrix" or "radar"?"Cascadia Mono, Consolas":"Segoe UI Variable Display, Segoe UI";
+        font=SettingsPolicy.ResolveFont(font, SkinTheme.Settings);
         var label=Text(text,size,p.Text,dpi,font,true);
         if(label.Width>box.Width) { size*=box.Width/label.Width; label=Text(text,size,p.Text,dpi,font,true); }
         var at=new Point(box.Left+(box.Width-label.Width)/2,box.Top+(box.Height-label.Height)/2);

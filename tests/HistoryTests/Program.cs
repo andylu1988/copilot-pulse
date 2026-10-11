@@ -165,6 +165,25 @@ options.WarningEnabled = true; warningSample.FetchedAt = DateTimeOffset.Now.AddM
 Check("stale quota month does not warn", warns.Active(warningSample, options).Count == 0);
 var persistedOptions = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(options))!;
 Check("settings serialize and restore", persistedOptions.Language == "en" && persistedOptions.AnimationFps == 60 && persistedOptions.WarningAmount == 80);
+Check("amount threshold percent is independent of quota", SettingsPolicy.QuotaPercent(new Account { Cost = 200, Limit = 1000 }) == 20);
+Check("unknown quota remains unknown", SettingsPolicy.QuotaPercent(new Account { Cost = 200, Percent = 50 }) == null);
+options.NumberFont = "bogus"; SettingsPolicy.Normalize(options); Check("invalid font safely falls back", options.NumberFont == "skin");
+foreach (string font in SettingsPolicy.NumberFonts) { options.NumberFont = font; SettingsPolicy.Normalize(options); Check("font persists " + font, options.NumberFont == font); }
+string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
+string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.11.0/CopilotPulse-Setup-1.11.0-x64.exe";
+string validDigest = "sha256:" + new string('a',64);
+Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,11,0));
+Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,11,0)) == null);
+Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
+Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
+try { UpdatePolicy.Parse(ReleaseJson("1.11.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
+try { UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+string hashFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid()+".bin");
+File.WriteAllText(hashFile,"verified installer test");
+string expectedHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile)));
+await UpdatePolicy.VerifyAsync(hashFile,expectedHash); Check("download hash verified",true);
+try { await UpdatePolicy.VerifyAsync(hashFile,new string('0',64)); Check("tampered download rejected",false); } catch (InvalidDataException) { Check("tampered download rejected",true); }
+File.Delete(hashFile);
 Console.WriteLine($"FINAL {passed} checks passed");
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

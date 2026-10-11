@@ -41,14 +41,14 @@ public partial class MainWindow
         Check("language control applies English", preferences.Language == "en" && UiText.English);
         settingsWindow!.Close(); OpenPreferences(); await Task.Delay(180);
         Check("checkbox dark theme contrast", Nodes<CheckBox>(settingsWindow!).All(c => c.Foreground.ToString() == ((Brush)FindResource("SkinText")).ToString()));
-        Nodes<ComboBox>(settingsWindow!).ToArray()[3].SelectedIndex = 1;
+        Nodes<ComboBox>(settingsWindow!).ToArray()[4].SelectedIndex = 1;
         var thresholdInput = Nodes<TextBox>(settingsWindow!).Single();
         var applyButton = Nodes<Button>(settingsWindow!).Single(b => (string?)b.Content == "Apply");
         thresholdInput.Text = "-5"; applyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check("invalid threshold rejected", preferences.WarningAmount == 1000);
         thresholdInput.Text = "1250.50"; applyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check("threshold control applies decimal amount", preferences.WarningAmount == 1250.50m);
-        Nodes<ComboBox>(settingsWindow!).ToArray()[3].SelectedIndex = 0;
+        Nodes<ComboBox>(settingsWindow!).ToArray()[4].SelectedIndex = 0;
         CaptureControl(settingsWindow!, Path.Combine(directory, "settings-en.png"));
         Capture(Path.Combine(directory, "widget-en.png"));
         Check("english live status", StatusLabel.Text.Contains("Demo"));
@@ -63,6 +63,22 @@ public partial class MainWindow
         Check("warning visible", WarningBox.Visibility == Visibility.Visible);
         Capture(Path.Combine(directory, "widget-warning.png"));
         preferences.WarningEnabled = false; ApplySettings(); Check("warning disabled hidden", WarningBox.Visibility == Visibility.Collapsed);
+        preferences.WarningEnabled = true; preferences.WarningMode = "amount"; preferences.WarningAmount = 2000; ApplySettings();
+        Check("below-threshold progress remains visible", UsageProgress.Visibility == Visibility.Visible && UsageProgress.Text.Contains("61.73%") && WarningBox.Visibility == Visibility.Collapsed);
+        Capture(Path.Combine(directory, "widget-threshold-progress.png"));
+        foreach (string font in SettingsPolicy.NumberFonts)
+        {
+            preferences.NumberFont = font; ApplySettings(); await Task.Delay(40);
+            Check("font option " + font, SkinTheme.Settings.NumberFont == font);
+            SetDisplayMode("mini"); await Task.Delay(40);
+            Capture(Path.Combine(directory, "font-" + font.Replace(" ", "-") + ".png"));
+        }
+        SetDisplayMode("full"); preferences.NumberFont = "skin";
+        preferences.WarningMode = "percent"; ApplySettings();
+        Check("quota percentage uses numeric limit", UsageProgress.Text.Contains("1.20%"));
+        Check("unknown quota has no invented percentage", SettingsPolicy.QuotaPercent(new Account { Cost = 50, Percent = 75 }) == null);
+        var updateReview = new UpdateWindow(preferences) { Owner = this }; updateReview.Show(); await Task.Delay(120);
+        CaptureControl(updateReview, Path.Combine(directory, "online-update.png")); updateReview.Close();
         File.WriteAllText(Path.Combine(directory, "settings-review.json"), JsonSerializer.Serialize(new { passed = checks.Count, checks, zone = SystemClock.ZoneLabel(DateTimeOffset.Now) }, Store.Json));
         historyWindow.Close(); settingsWindow.Close(); skinWindow!.Close();
     }
