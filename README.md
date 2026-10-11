@@ -91,6 +91,16 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 未提供具体数字限额的账户不计算百分比警告，可使用金额警告。本次运行中，每个账户在相同 UTC 配额月份和阈值下提醒一次；重启或修改阈值后可再次提醒。系统通知是否显示受 Windows 通知设置影响。
 
+### 阈值进度与警告通知
+
+开启 **⋯ → 设置… → 用量警告**，选择金额或配额百分比阈值并应用。达到阈值后，主面板显示警告；成功同步时会发出 Windows 通知。
+
+下图展示 **紧凑面板 · 数字矩阵皮肤**：虚构本月用量 **$1,234.56**，金额警告阈值 **$1,000.00**，达到阈值的 **123.46%**。右侧通知使用应用实际警告文案。
+
+![紧凑矩阵面板与 Windows 用量警告通知示意，虚构数据](docs/screenshots/usage-warning-notification.png)
+
+*左侧为 v1.11.0 实际控件的隔离示例截图；右侧为 Windows 通知示意，实际样式取决于系统。金额、账户与趋势均为虚构数据。*
+
 窗口背景、标题、普通文字和金额区域均可拖动；按钮、输入框、滑块和图表继续响应原有操作。Windows 更改时区后，应用会在一分钟内重新读取；“今天”按本机午夜，配额月份按 UTC 00:00。
 
 <table><tr><th>中文</th><th>English</th></tr><tr><td><img src="docs/screenshots/settings-zh.png" width="380" alt="中文偏好设置"></td><td><img src="docs/screenshots/settings-en.png" width="380" alt="English preferences"></td></tr></table>
@@ -179,11 +189,13 @@ dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-
 
 Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. The personal repository is public. Access to the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
 
-All screenshots use **synthetic accounts and usage**, rendered with actual v1.9.6 controls. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.
+All screenshots use **synthetic accounts and usage**. Widget captures use actual application controls; the warning notification card is an explicitly labelled Windows notification illustration. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.
 ### Preferences in v1.9.9
 
 Open **⋯ → Settings…**, or right-click the mini widget / tray icon. Choose Chinese or English, a 15/30/60/120/300/600-second refresh interval, and 10/15/20/30/60 FPS. Settings apply immediately and persist locally. Thresholds require Apply or Enter.
 
 Warnings are disabled by default. Choose a per-account numeric quota percentage (1–100%) or monthly total amount ($0.01–$1,000,000,000). Unknown quotas do not trigger percentage warnings. During each app session, each account/threshold warns once per UTC quota month; restarting permits another notification. Windows notification settings apply.
+
+The [warning notification example](docs/screenshots/usage-warning-notification.png) pairs an actual v1.11.0 compact Matrix widget capture with an illustrated Windows notification. Synthetic monthly usage of $1,234.56 reaches 123.46% of a $1,000.00 amount threshold. The notification wording matches the application; actual Windows appearance varies by system.
 
 Windows timezone and the next UTC month reset in local time are displayed in Preferences. Today starts at local midnight; monthly quota periods start at UTC midnight. Drag ordinary text, amounts or background areas to move windows. Links open the usage page and guides in your default browser.
