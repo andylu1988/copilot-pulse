@@ -50,6 +50,7 @@ public partial class MainWindow : Window
         {
             closing = true;
             timer.Stop();
+            StopAutomaticUpdates();
             skinWindow?.Close();
             settingsWindow?.Close();
             skinSaveTimer.Stop();
@@ -80,6 +81,14 @@ public partial class MainWindow : Window
                 }
             });
             SetStatus("demo");
+            if (App.UpdateReviewInstaller != null)
+            {
+                string setup = App.UpdateReviewInstaller;
+                string digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(setup)));
+                var reviewRelease = new UpdateRelease(new Version(1,12,0), "v1.12.0", preferences.UpdateRepository, Path.GetFileName(setup), "", digest);
+                await UpdateHandoff.LaunchAsync(setup, reviewRelease, new[] { "--demo", "--capture", Path.Combine(Path.GetDirectoryName(setup)!, "restarted.png") });
+                Application.Current.Shutdown(); return;
+            }
             if(App.SettingsReviewPath != null) { await ReviewSettingsAsync(App.SettingsReviewPath); Close(); return; }
             if(App.MiniReviewPath != null) { await ReviewMiniAsync(App.MiniReviewPath); Close(); return; }
             if (App.SkinReviewPath != null) { await ReviewSkinsAsync(App.SkinReviewPath); Close(); return; }
@@ -100,6 +109,7 @@ public partial class MainWindow : Window
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         timer.Tick += Tick;
         timer.Start();
+        StartAutomaticUpdates();
         await monitor.InitializeAsync();
         if (App.OpenLogin && status == "login") monitor.ShowLogin();
         if (App.HistoryAtStartup && !App.Smoke) OpenHistory(this, new RoutedEventArgs());
@@ -136,6 +146,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < data.Accounts.Count; i++) AccountCards.Children.Add(CreateCard(data.Accounts[i], i));
         EvaluateWarning(false);
         UiText.Apply(this);
+        RefreshUpdateBadge();
         UpdateTimestamp();
     }
 
@@ -206,6 +217,7 @@ public partial class MainWindow : Window
         AlertText.Text = notice;
         AlertBox.Visibility = notice.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         UiText.Apply(this);
+        RefreshUpdateBadge();
         UpdateTimestamp();
     }
 
@@ -245,6 +257,7 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
         var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
+        var about = new MenuItem { Header = UiText.T("关于…", "About…") }; about.Click += (_, _) => OpenAbout(); menu.Items.Add(about);
         menu.Items.Add(BuildDisplayModeMenu());
         menu.Items.Add(BuildSkinMenu());
         var motion = new MenuItem { Header = "减少动态效果", IsCheckable = true, IsChecked = preferences.ReduceMotion };
@@ -295,6 +308,7 @@ public partial class MainWindow : Window
     {
         var menu = new Forms.ContextMenuStrip { Renderer = new DarkTrayRenderer(), BackColor = DarkTrayRenderer.Surface, ForeColor = DarkTrayRenderer.Text, Font = new System.Drawing.Font("Segoe UI", 9.5f), Padding = new Forms.Padding(4, 5, 4, 5), ShowImageMargin = false };
         menu.Items.Add(UiText.Translate("设置…"), null, (_, _) => Dispatcher.Invoke(OpenPreferences));
+        menu.Items.Add(UiText.T("关于…", "About…"), null, (_, _) => Dispatcher.Invoke(OpenAbout));
         menu.Items.Add("显示小组件", null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); }));
         menu.Items.Add("迷你数字模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("mini")));
         menu.Items.Add("展开完整模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("full")));

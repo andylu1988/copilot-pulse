@@ -170,20 +170,46 @@ Check("unknown quota remains unknown", SettingsPolicy.QuotaPercent(new Account {
 options.NumberFont = "bogus"; SettingsPolicy.Normalize(options); Check("invalid font safely falls back", options.NumberFont == "skin");
 foreach (string font in SettingsPolicy.NumberFonts) { options.NumberFont = font; SettingsPolicy.Normalize(options); Check("font persists " + font, options.NumberFont == font); }
 string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
-string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.11.0/CopilotPulse-Setup-1.11.0-x64.exe";
+string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.12.0/CopilotPulse-Setup-1.12.0-x64.exe";
 string validDigest = "sha256:" + new string('a',64);
-Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,11,0));
-Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,11,0)) == null);
-Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
-Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
-try { UpdatePolicy.Parse(ReleaseJson("1.11.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
-try { UpdatePolicy.Parse(ReleaseJson("1.11.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,12,0));
+Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,12,0)) == null);
+Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
+Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
+try { UpdatePolicy.Parse(ReleaseJson("1.12.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
+try { UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
 string hashFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid()+".bin");
 File.WriteAllText(hashFile,"verified installer test");
 string expectedHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile)));
 await UpdatePolicy.VerifyAsync(hashFile,expectedHash); Check("download hash verified",true);
 try { await UpdatePolicy.VerifyAsync(hashFile,new string('0',64)); Check("tampered download rejected",false); } catch (InvalidDataException) { Check("tampered download rejected",true); }
 File.Delete(hashFile);
+var autoNow = new DateTimeOffset(2026,10,11,12,0,0,TimeSpan.FromHours(8));
+var candidate = UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
+var autoState = new AutoUpdateState();
+Check("initial hourly check due", AutoUpdatePolicy.CheckDue(autoState, autoNow));
+autoState.LastAttemptUtc = autoNow;
+Check("hourly check does not repeat early", !AutoUpdatePolicy.CheckDue(autoState, autoNow.AddMinutes(59)));
+Check("hourly boundary checks", AutoUpdatePolicy.CheckDue(autoState, autoNow.AddHours(1)));
+Check("backward system clock rechecks safely", AutoUpdatePolicy.CheckDue(autoState, autoNow.AddHours(-1)));
+AutoUpdatePolicy.Observe(autoState, candidate, candidate.Repository, autoNow);
+Check("first notice stores UTC", autoState.FirstSeenUtc!.Value.Offset == TimeSpan.Zero);
+Check("no install before 48 hours", !AutoUpdatePolicy.InstallDue(autoState,candidate,autoNow.AddHours(48).AddTicks(-1),true));
+Check("install at 48 hours", AutoUpdatePolicy.InstallDue(autoState,candidate,autoNow.AddHours(48),true));
+Check("failed check prevents unattended install", !AutoUpdatePolicy.InstallDue(autoState,candidate,autoNow.AddDays(3),false));
+Check("UTC deadline unaffected by offset", AutoUpdatePolicy.InstallDue(autoState,candidate,autoNow.AddHours(48).ToOffset(TimeSpan.FromHours(-7)),true));
+var resumed = System.Text.Json.JsonSerializer.Deserialize<AutoUpdateState>(System.Text.Json.JsonSerializer.Serialize(autoState))!;
+AutoUpdatePolicy.Observe(resumed,candidate,candidate.Repository,autoNow.AddDays(1));
+Check("restart and repeat check retain original grace", resumed.FirstSeenUtc == autoState.FirstSeenUtc);
+resumed.Acknowledged = true;
+Check("opening notice cancels automatic installation", !AutoUpdatePolicy.InstallDue(resumed,candidate,autoNow.AddDays(3),true));
+var acknowledged = System.Text.Json.JsonSerializer.Deserialize<AutoUpdateState>(System.Text.Json.JsonSerializer.Serialize(resumed))!;
+Check("acknowledgement survives restart", acknowledged.Acknowledged);
+AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,13,0)},candidate.Repository,autoNow.AddDays(3));
+Check("different release gets full grace", !acknowledged.Acknowledged && acknowledged.FirstSeenUtc == autoNow.AddDays(3).ToUniversalTime());
+Check("mismatched candidate cannot install", !AutoUpdatePolicy.InstallDue(acknowledged,candidate,autoNow.AddDays(6),true));
+AutoUpdatePolicy.Observe(acknowledged,null,candidate.Repository,autoNow.AddDays(4));
+Check("withdrawn release clears notice", acknowledged.Version == "" && acknowledged.FirstSeenUtc == null);
 Console.WriteLine($"FINAL {passed} checks passed");
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

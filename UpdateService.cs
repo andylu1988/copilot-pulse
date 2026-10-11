@@ -15,7 +15,7 @@ public sealed record UpdateRelease(Version Version, string Tag, string Repositor
 
 public static class UpdatePolicy
 {
-    public static readonly Version Current = new(1, 10, 0);
+    public static readonly Version Current = new(1, 11, 0);
     public static string Repository(string value) => value == "andylu_microsoft/copilot-pulse" ? value : "andylu1988/copilot-pulse";
     public static string ReleasePage(string repository) => "https://github.com/" + Repository(repository) + "/releases/latest";
     public static UpdateRelease? Parse(string json, string repository, Version current)
@@ -51,23 +51,27 @@ public static class UpdatePolicy
 internal sealed class UpdateService
 {
     private static readonly HttpClient http = new() { Timeout = TimeSpan.FromMinutes(3) };
-    private bool useCli;
     internal async Task<UpdateRelease?> CheckAsync(string repository, CancellationToken cancel)
+    {
+        var latest = await LatestAsync(repository, cancel);
+        return latest?.Version > UpdatePolicy.Current ? latest : null;
+    }
+    internal async Task<UpdateRelease?> LatestAsync(string repository, CancellationToken cancel)
     {
         repository = UpdatePolicy.Repository(repository);
         string json;
-        useCli = repository == "andylu_microsoft/copilot-pulse";
+        bool useCli = repository == "andylu_microsoft/copilot-pulse";
         if (useCli)
             json = await CliAsync(new[] { "api", $"repos/{repository}/releases/latest" }, cancel);
         else
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repository}/releases/latest");
-            request.Headers.UserAgent.ParseAdd("CopilotPulse/1.10.0");
+            request.Headers.UserAgent.ParseAdd("CopilotPulse/1.11.0");
             using var response = await http.SendAsync(request, cancel);
             response.EnsureSuccessStatusCode();
             json = await response.Content.ReadAsStringAsync(cancel);
         }
-        return UpdatePolicy.Parse(json, repository, UpdatePolicy.Current);
+        return UpdatePolicy.Parse(json, repository, new Version(0, 0, 0));
     }
     internal async Task<string> DownloadAsync(UpdateRelease release, CancellationToken cancel)
     {
@@ -76,7 +80,7 @@ internal sealed class UpdateService
         string path = Path.Combine(directory, release.AssetName);
         try
         {
-            if (useCli) await CliAsync(new[] { "release", "download", release.Tag, "--repo", release.Repository, "--pattern", release.AssetName, "--dir", directory }, cancel);
+            if (release.Repository == "andylu_microsoft/copilot-pulse") await CliAsync(new[] { "release", "download", release.Tag, "--repo", release.Repository, "--pattern", release.AssetName, "--dir", directory }, cancel);
             else
             {
                 using var response = await http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancel);

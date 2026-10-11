@@ -4,7 +4,7 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.10.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.11.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -25,7 +25,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
 | 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
 | 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
-| 在线更新 | 设置中检查正式版本、下载并校验安装包；默认从个人公开仓库更新，无需登录 GitHub。 |
+| 在线更新 | 每小时检查正式版本，主界面“迷你”左侧显示新版本提醒；未点击满 48 小时自动安装并重启。默认使用个人公开仓库，无需登录 GitHub。 |
 | 数字字体 | 跟随皮肤或选择六种字体，完整 / 紧凑 / 迷你模式立即生效。 |
 | 阈值进度 | 主金额下持续显示金额阈值进度或最高账户配额百分比，低于警告线也能看到。 |
 | 本机历史 | 按月保存，重启后继续查看；升级与卸载保留历史和设置。 |
@@ -53,7 +53,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.10.0-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.11.0-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
@@ -137,6 +137,12 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或非零金额企业加入、移出；界面显示具体原因。零金额企业增减不影响计算。 |
 | 重启看不到旧记录 | 先用“月份 ▾”选择旧月份，用“历史文件夹”检查记录和目录权限。 |
 | 动画太强 | 降低强度 / 速度，或开启“减少动态效果”。 |
+
+### 版本信息与自动更新
+
+打开 **⋯ → 关于…** 查看项目信息、本地版本、云端最新正式版本、检查时间和项目链接。打开时自动检查，也可以手动刷新；失败时明确显示无法检查，不会把未知版本当作最新。
+
+客户端每小时检查更新，新版本按钮显示在“迷你”左侧。未打开提醒满 48 小时后，自动下载校验、保存退出、安装并重新打开。打开在线更新窗口会取消该版本的自动安装，可手动选择安装。关机或退出期间不检查，下一次运行时继续。详情见 [自动更新说明](docs/automatic-updates.md)。
 
 ## 从源码构建
 

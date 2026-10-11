@@ -8,12 +8,14 @@
     <local:Atmosphere x:Name="FullAtmosphere" IsHitTestVisible="False"/>
     <StackPanel x:Name="ContentStack" Margin="23,19,23,18">
       <Grid Margin="0,0,0,27" Background="Transparent">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel x:Name="HeaderBrand" Orientation="Horizontal" VerticalAlignment="Center">
           <Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource SkinHover}" Margin="0,0,10,0"><Path Width="19" Height="19" Stretch="Uniform" Fill="{DynamicResource SkinAccent}" Data="M12,0 L15,8 L23,11 L15,14 L12,22 L9,14 L1,11 L9,8 Z"/></Border>
           <StackPanel><TextBlock Text="COPILOT" FontSize="10" Foreground="{DynamicResource SkinMuted}" FontWeight="SemiBold"/><TextBlock Text="Pulse" FontSize="19" FontWeight="SemiBold" Margin="0,-1,0,0"/></StackPanel>
         </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel x:Name="HeaderActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="NewVersionButton" Content="有新版本" FontSize="9" Padding="5,7" Foreground="{DynamicResource SkinAccent}" Background="{DynamicResource SkinHover}" Visibility="Collapsed" Click="NewVersionClick"/>
           <Button Content="迷你" FontSize="11" Click="EnterMini" ToolTip="切换迷你数字框" Padding="7,7"/>
           <Button Content="换肤" FontSize="11" Click="OpenSkins" ToolTip="选择皮肤和自定义背景" Padding="7,7"/>
           <Button x:Name="PinButton" ToolTip="切换置顶" AutomationProperties.Name="切换置顶" Click="TogglePin"><Path Width="14" Height="14" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Data="M7,2 L17,2 M9,2 L9,9 L5,13 L19,13 L15,9 L15,2 M12,13 L12,22"/></Button>

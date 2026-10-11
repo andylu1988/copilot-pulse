@@ -1,15 +1,102 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace CopilotPulse;
 
 public partial class MainWindow
 {
+    private readonly DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly CancellationTokenSource updateCancel = new();
+    private readonly UpdateService autoUpdates = new();
+    private AutoUpdateState updateState = new();
+    private UpdateRelease? availableUpdate;
+    private UpdateWindow? updateWindow;
+    private AboutWindow? aboutWindow;
+    private string? stagedInstaller;
+    private bool checkingUpdate, freshUpdateCheck, installingUpdate;
+
+    private void StartAutomaticUpdates()
+    {
+        if (App.Demo || App.Smoke) return;
+        updateState = Store.Read<AutoUpdateState>("update-state.json") ?? new();
+        RefreshUpdateBadge();
+        updateTimer.Tick += async (_, _) => await PollUpdatesAsync();
+        updateTimer.Start();
+        _ = PollUpdatesAsync();
+    }
+    private void StopAutomaticUpdates()
+    {
+        updateTimer.Stop(); updateCancel.Cancel(); updateWindow?.Close(); aboutWindow?.Close();
+    }
+    private async Task PollUpdatesAsync()
+    {
+        if (closing || checkingUpdate || installingUpdate || updateWindow != null) return;
+        checkingUpdate = true;
+        try
+        {
+            string repository = UpdatePolicy.Repository(preferences.UpdateRepository);
+            if (updateState.Repository != repository) { updateState = new(); availableUpdate = null; stagedInstaller = null; freshUpdateCheck = false; }
+            if (AutoUpdatePolicy.CheckDue(updateState, DateTimeOffset.UtcNow))
+            {
+                updateState.LastAttemptUtc = DateTimeOffset.UtcNow;
+                Store.Write("update-state.json", updateState);
+                freshUpdateCheck = false;
+                var release = await autoUpdates.CheckAsync(repository, updateCancel.Token);
+                if (closing || repository != UpdatePolicy.Repository(preferences.UpdateRepository)) return;
+                if (availableUpdate != release) stagedInstaller = null;
+                availableUpdate = release; freshUpdateCheck = true;
+                AutoUpdatePolicy.Observe(updateState, release, repository, DateTimeOffset.UtcNow);
+                Store.Write("update-state.json", updateState);
+                RefreshUpdateBadge();
+            }
+            if (availableUpdate != null && freshUpdateCheck && !updateState.Acknowledged && stagedInstaller == null)
+                stagedInstaller = await autoUpdates.DownloadAsync(availableUpdate, updateCancel.Token);
+            if (!closing && updateWindow == null && AutoUpdatePolicy.InstallDue(updateState, availableUpdate, DateTimeOffset.UtcNow, freshUpdateCheck) && stagedInstaller != null)
+            {
+                installingUpdate = true;
+                RefreshUpdateBadge();
+                try { await UpdateHandoff.LaunchAsync(stagedInstaller, availableUpdate!); if (!closing) Application.Current.Shutdown(); }
+                catch { installingUpdate = false; stagedInstaller = null; freshUpdateCheck = false; }
+            }
+        }
+        catch (Exception) { /* Retain the notice; retry on the next hourly check. No installation after a failed check. */ freshUpdateCheck = false; }
+        finally { checkingUpdate = false; if (!closing) RefreshUpdateBadge(); }
+    }
+    private void RefreshUpdateBadge()
+    {
+        bool visible = Version.TryParse(updateState.Version, out var version) && version > UpdatePolicy.Current && updateState.Repository == UpdatePolicy.Repository(preferences.UpdateRepository);
+        NewVersionButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        System.Windows.Controls.Grid.SetRow(HeaderActions, visible ? 1 : 0);
+        System.Windows.Controls.Grid.SetColumn(HeaderActions, visible ? 0 : 1);
+        System.Windows.Controls.Grid.SetColumnSpan(HeaderActions, visible ? 2 : 1);
+        HeaderActions.HorizontalAlignment = HorizontalAlignment.Right;
+        HeaderActions.Margin = visible ? new Thickness(0, 8, 0, 0) : new Thickness(0);
+        NewVersionButton.IsEnabled = !installingUpdate;
+        NewVersionButton.Content = UiText.T("有新版本", "Update");
+        string deadline = updateState.FirstSeenUtc.HasValue ? (updateState.FirstSeenUtc.Value + AutoUpdatePolicy.GracePeriod).ToLocalTime().ToString("MM-dd HH:mm") : "—";
+        NewVersionButton.ToolTip = UiText.T($"版本 {updateState.Version} · " + (updateState.Acknowledged ? "点击手动更新" : $"未点击将在 {deadline} 自动安装并重启"), $"Version {updateState.Version} · " + (updateState.Acknowledged ? "Click to install" : $"Automatic install and restart at {deadline} unless opened"));
+    }
+    internal void OpenAbout()
+    {
+        if (aboutWindow != null) { aboutWindow.Activate(); return; }
+        aboutWindow = new AboutWindow(preferences, OpenUpdates) { Owner = this };
+        aboutWindow.Closed += (_, _) => aboutWindow = null;
+        aboutWindow.Show();
+    }
+    private void NewVersionClick(object sender, RoutedEventArgs e) => OpenUpdates();
     internal void OpenUpdates()
     {
-        var window = new UpdateWindow(preferences) { Owner = this };
-        window.Show();
+        if (installingUpdate) return;
+        if (updateWindow != null) { updateWindow.Activate(); return; }
+        if (updateState.FirstSeenUtc.HasValue) { updateState.Acknowledged = true; if (!App.Demo && !App.Smoke) Store.Write("update-state.json", updateState); }
+        RefreshUpdateBadge();
+        updateWindow = new UpdateWindow(preferences, availableUpdate, stagedInstaller) { Owner = this };
+        updateWindow.Closed += (_, _) => { updateWindow = null; RefreshUpdateBadge(); };
+        updateWindow.Show();
     }
     private void RefreshUsageProgress()
     {

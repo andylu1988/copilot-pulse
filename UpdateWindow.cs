@@ -16,7 +16,7 @@ internal sealed class UpdateWindow : Window
     private UpdateRelease? release;
     private string? installer;
     private readonly Preferences preferences;
-    internal UpdateWindow(Preferences preferences)
+    internal UpdateWindow(Preferences preferences, UpdateRelease? initialRelease = null, string? initialInstaller = null)
     {
         this.preferences = preferences;
         Title = UiText.T("Copilot Pulse · 在线更新", "Copilot Pulse · Online updates"); Icon = BrandIcon.Window;
@@ -32,11 +32,11 @@ internal sealed class UpdateWindow : Window
         status.Text = UiText.T("默认从个人公开仓库检查正式版本，无需登录 GitHub。EMU 私有仓库需要有权限的 GitHub CLI 账户。", "Checks stable releases from the public personal repository without GitHub sign-in. The private EMU mirror needs an authorized GitHub CLI account.");
         var buttons = new WrapPanel(); body.Children.Add(buttons);
         void Add(Button button, string zh, string en) { button.Content = UiText.T(zh,en); button.Padding = new Thickness(10,8,10,8); button.Margin = new Thickness(0,0,6,8); buttons.Children.Add(button); }
-        Add(check,"检查更新","Check for updates"); Add(download,"下载更新","Download"); Add(install,"安装并退出","Install and exit");
+        Add(check,"检查更新","Check for updates"); Add(download,"下载更新","Download"); Add(install,"安装并重启","Install and restart");
         download.IsEnabled = install.IsEnabled = false;
         var browser = new Button(); Add(browser,"浏览器下载 ↗","Browser download ↗");
         browser.Click += (_, _) => Process.Start(new ProcessStartInfo(UpdatePolicy.ReleasePage(preferences.UpdateRepository)) { UseShellExecute = true });
-        body.Children.Add(new TextBlock { Text = UiText.T("下载后校验 GitHub 发布资产的 SHA256。点击安装后退出小组件，按安装向导完成升级；历史、登录和偏好设置保留。", "Downloads are verified against the GitHub release asset SHA256. Install closes the widget and opens the setup wizard. History, sign-in and preferences are retained."), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        body.Children.Add(new TextBlock { Text = UiText.T("每小时检查正式版本，未点击提醒满 48 小时后自动升级。点击安装后保存并关闭小组件，安装完成自动重新打开；历史、登录和偏好设置保留。打开更新窗口会取消当前版本的自动安装。", "Checks hourly. Unopened notices install automatically after 48 hours. Install saves and closes the widget, verifies SHA256, then reopens it after setup. History, sign-in and preferences are retained. Opening updates cancels automatic installation for the current version."), FontSize = 11, TextWrapping = TextWrapping.Wrap });
         check.Click += async (_, _) =>
         {
             check.IsEnabled = repo.IsEnabled = download.IsEnabled = install.IsEnabled = false; release = null; installer = null;
@@ -57,9 +57,15 @@ internal sealed class UpdateWindow : Window
         {
             if (installer == null || release == null) return;
             install.IsEnabled = download.IsEnabled = check.IsEnabled = repo.IsEnabled = false;
-            try { await UpdatePolicy.VerifyAsync(installer, release.Digest); Process.Start(new ProcessStartInfo(installer) { UseShellExecute = true }); Application.Current.Shutdown(); }
+            try { await UpdateHandoff.LaunchAsync(installer, release); Application.Current.Shutdown(); }
             catch (Exception) { status.Text = UiText.T("无法启动安装，请重新下载。", "Unable to launch installer. Download again."); check.IsEnabled = repo.IsEnabled = true; }
         };
+        if (initialRelease != null && initialRelease.Repository == UpdatePolicy.Repository(preferences.UpdateRepository))
+        {
+            release = initialRelease; installer = initialInstaller;
+            status.Text = UiText.T($"新版本 {release.Version} 可用。", $"Version {release.Version} is available.");
+            download.IsEnabled = installer == null; install.IsEnabled = installer != null;
+        }
         Closed += (_, _) => cancel.Cancel();
     }
 }

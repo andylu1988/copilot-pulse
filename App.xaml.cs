@@ -11,6 +11,7 @@ public partial class App : Application
     private FileStream? storageLock;
     public static string DataDirectory { get; private set; } = DataStorage.SharedDirectory;
     public static string WebViewDirectory => Path.Combine(SsoCheck ? DataDirectory : DataStorage.LegacyDirectory, "WebView2");
+    public static string? UpdateReviewInstaller { get; private set; }
     public static bool Demo { get; private set; }
     public static string? CapturePath { get; private set; }
     public static bool Smoke { get; private set; }
@@ -26,10 +27,19 @@ public partial class App : Application
     public static string? SettingsReviewPath { get; private set; }
     public static string? MiniReviewPath { get; private set; }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
+        int applyUpdate = Array.IndexOf(e.Args, "--apply-update");
+        if (applyUpdate >= 0)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            int result = applyUpdate + 1 < e.Args.Length ? await UpdateHandoff.ApplyAsync(e.Args[applyUpdate + 1]) : 1;
+            Shutdown(result); return;
+        }
         base.OnStartup(e);
         Demo = Array.IndexOf(e.Args, "--demo") >= 0;
+        int updateReview = Array.IndexOf(e.Args, "--review-update");
+        if (updateReview >= 0 && updateReview + 1 < e.Args.Length) { UpdateReviewInstaller = Path.GetFullPath(e.Args[updateReview + 1]); Demo = true; }
         Smoke = Array.IndexOf(e.Args, "--smoke") >= 0;
         OpenLogin = Array.IndexOf(e.Args, "--login") >= 0;
         HistoryAtStartup = Array.IndexOf(e.Args, "--history") >= 0;

@@ -30,6 +30,7 @@ public partial class MainWindow
         if (data != null) RenderData(data);
         SetStatus(status);
         UiText.Apply(this);
+        RefreshUpdateBadge();
         if (historyWindow != null) { UiText.Apply(historyWindow); _ = historyWindow.ReloadAsync(); }
         if (tray != null)
         {

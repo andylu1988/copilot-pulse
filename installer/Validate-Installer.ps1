@@ -55,6 +55,22 @@ $sentinel = Join-Path $install 'upgrade-sentinel.txt'
 [IO.File]::WriteAllText($sentinel,'installer-validation')
 RunHidden $setup $installArgs
 Check 'upgrade preserves existing extra files' ([IO.File]::ReadAllText($sentinel) -eq 'installer-validation')
+# Exercise the real detached helper: close the old test app, install, then restart and render.
+$updateStage = Join-Path ([IO.Path]::GetTempPath()) ('CopilotPulse-update\' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $updateStage | Out-Null
+$updateSetup = Join-Path $updateStage ([IO.Path]::GetFileName($setup))
+Copy-Item -LiteralPath $setup -Destination $updateSetup
+RunHidden (Join-Path $install 'CopilotPulse.exe') @('--review-update', ('"' + $updateSetup + '"'))
+$restarted = Join-Path $updateStage 'restarted.png'
+$deadline = (Get-Date).AddSeconds(90)
+while (-not (Test-Path -LiteralPath $restarted) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+Check 'detached updater installs and automatically restarts client' (Test-Path -LiteralPath $restarted)
+$tickets = Get-ChildItem -LiteralPath (Split-Path $updateStage) -Filter 'update-ticket.json' -Recurse -File | Where-Object { ([IO.File]::ReadAllText($_.FullName) | ConvertFrom-Json).Installer -eq $updateSetup }
+Check 'updater helper confirms setup succeeded' (@($tickets).Count -eq 1 -and [IO.File]::ReadAllText($tickets[0].FullName + '.result') -eq 'setup-exit=0')
+Check 'automatic update preserves extra installed files' ([IO.File]::ReadAllText($sentinel) -eq 'installer-validation')
+Check 'automatic update installed expected payload' ((Get-FileHash -LiteralPath (Join-Path $install 'CopilotPulse.dll')).Hash -eq (Get-FileHash -LiteralPath (Join-Path $payload 'CopilotPulse.dll')).Hash)
+# The capture client exits just after writing its image; wait for it to release installer files.
+Get-Process CopilotPulse -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq (Join-Path $install 'CopilotPulse.exe') } | ForEach-Object { if (-not $_.WaitForExit(15000)) { throw 'Restarted test client did not exit.' } }
 RunHidden (Join-Path $install 'unins000.exe') @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="' + (Join-Path $validation 'uninstall.log') + '"'))
 Check 'uninstall removes application' (-not (Test-Path -LiteralPath (Join-Path $install 'CopilotPulse.exe')))
 Check 'uninstall removes test shortcuts' ((-not (Test-Path -LiteralPath $desktop)) -and (-not (Test-Path -LiteralPath $menu)))
