@@ -49,3 +49,15 @@
 
 - `online-update.png` 更新为实际 1.11.2 控件截图，展示一键检查、下载、校验、安装与重启入口。来自隔离界面验证，未读取真实账户数据。
 - The online update screenshot shows the actual 1.11.2 controls from an isolated UI review, without real account data.
+
+## v1.12.0 记录区间增量 / Recorded period delta
+
+- `record-point-matrix.png` / `record-point-matrix-en.png`：实际紧凑矩阵控件，加上单次任务用量观察的操作说明。
+- `recorded-delta-matrix.png` / `recorded-delta-matrix-en.png`：实际独立增量窗口，累计增量 +$611.05，共50笔读数。
+- `mini-restore-matrix.png` / `mini-restore-matrix-en.png`：实际迷你与紧凑矩阵控件的排版，说明恢复原先布局。
+
+使用已发布的1.12.0程序集，`--demo --skin matrix --review-history` 与 `--demo --skin matrix --mini --capture` 隔离渲染。图注在控件外添加，未改造按钮或数字。所有账户、金额与日期历史均为虚构示例；静态图展示字符雨的一帧。
+
+本月累计 $1,234.56，记录起点首笔 $623.51，记录后增量 $611.05；示例覆盖多天，不是一次真实任务。单次任务观察需等待基线，再运行任务并等源站更新，包含同期其他用量，不是精确账单。
+
+Actual released v1.12.0 WPF controls rendered in isolated Matrix demo mode; surrounding captions are editorial. All data is synthetic. The multi-day sample illustrates the arithmetic, not a real task cost. Task observations depend on source latency and may include concurrent usage.

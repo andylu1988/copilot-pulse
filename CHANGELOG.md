@@ -2,10 +2,12 @@
 
 ## 1.12.0：记录区间增量 / Recorded period delta
 
+- 新增单次任务用量观察场景：任务前增加记录点，待首个成功采样后运行任务，源页面更新后查看增量；数据可能延迟，包含并行用量，不代表精确单任务账单。
 - 主界面增加“增加记录点 / 删除记录点”，历史趋势下新增独立“记录区间增量”卡片及图表，支持总用量、单个账户、累计增量和单次采样变化。
 - 点击时建立计量起点，刷新成功后保存采样；首个有效读数从零开始。记录点与采样重启、升级保留，删除记录点不删除历史。
 - 设置支持输入本机时间自定义起点，按系统时区转换并保存 UTC；跨月按各 UTC 配额月实际观测变化累加，缺失或不可比数据明确提示，不推算漏采用量。
 - 迷你模式恢复先前的紧凑或完整模式，重启保留选择；修正负向采样变化图表裁切。
+- Observe a single task: add a point, wait for the first successful sample, run the task, then inspect the delta after the source updates. Source latency and concurrent usage apply; this is not precise per-task billing.
 - Add or delete a record point directly on the widget. A separate card and chart show total/per-account cumulative delta and individual sample changes.
 - Successful samples and the record point persist across restarts and upgrades. The first valid sample starts at zero; deleting the point preserves history.
 - Custom local start times are converted to UTC. Cross-month totals sum observed within-month changes only; missing or incompatible data is explained without estimating unseen usage.

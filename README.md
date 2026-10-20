@@ -10,7 +10,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ![完整组件、今天趋势和迷你皮肤](docs/screenshots/overview.png)
 
-> 应用截图使用虚构账户、金额和历史，在隔离环境渲染。外观展示来自 v1.9.6；首次连接和 UTC 月份截图来自 v1.9.8。登录步骤中间栏是流程说明，不是 Microsoft 登录页截图。静态图展示动画的一帧。
+> 应用截图使用虚构账户、金额和历史，在隔离环境渲染。外观展示来自 v1.9.6；首次连接和 UTC 月份截图来自 v1.9.8。登录步骤中间栏是流程说明，不是 Microsoft 登录页截图。v1.12.0 新功能图使用已发布应用的矩阵皮肤与隔离示例数据。静态图展示动画的一帧。
 
 ## 它能做什么
 
@@ -22,7 +22,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 历史趋势 | 今天、24 小时、7 天、本月、指定月份；支持总用量与单个企业。 |
 | 两种图表 | 累计折线看走势，变化柱状图看相邻采样变化，悬停查看详细读数。 |
 | 区间净增长 | 完整与紧凑主卡片在小曲线下显示所选区间的总用量净增长，一起刷新。 |
-| 记录区间增量 | 点击“增加记录点”，单独采样并查看从该点开始的累计增量和单次变化；记录点与采样重启保留。 |
+| 记录区间增量 | 任务开始前增加记录点，观察单次任务期间的用量变化；独立采样与曲线，记录点和采样重启保留。 |
 | 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
 | 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
 | 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
@@ -86,6 +86,25 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 也可在设置中输入本机日期时间 `YYYY-MM-DD HH:mm` 指定起点。应用按系统时区换算并保存 UTC 时间；系统时区改变后只改变显示时间。跨 UTC 配额月份时，累加各月实际采样内的变化，不推算漏采时段；缺少整月数据或账户口径无法比较时显示原因。应用未运行期间不会补造采样。
 
 迷你模式双击或点击展开时，会恢复上次的紧凑或完整模式；该选择重启后保留。
+
+### 用来观察单次任务的花费
+
+“记录区间增量”适合观察一次代码生成、排查或其他 Copilot 任务前后的用量变化：
+
+1. 任务开始前点击 **增加记录点**。
+2. **等首个成功采样建立零基线后，再开始任务**。
+3. 任务结束后，等待源页面反映新增用量，并让组件成功刷新。
+4. 查看记录区间增量，点击卡片查看累计曲线或单次采样变化。需要重新观察时，删除记录点后再添加；原有历史保留。
+
+这是源页面在所记录时间段内的 **INTERNAL USD 用量变化**。源页面可能延迟更新；同一期间其他任务或账户的消费也可能计入，应尽量避免并行用量，必要时选择对应账户查看。它不能精确归因到某次 API 请求，也不是单任务账单。未采集时段不会补造记录。
+
+![矩阵皮肤：增加记录点，观察单次任务用量；全部为示例数据](docs/screenshots/record-point-matrix.png)
+
+![矩阵皮肤：独立记录区间增量曲线，示例数据](docs/screenshots/recorded-delta-matrix.png)
+
+示例本月累计 **$1,234.56**，记录点首个读数 **$623.51**，记录后增量 **+$611.05**，共 50 次采样。这个示例覆盖多天，用于展示计算口径，不代表一次真实任务的花费。
+
+![矩阵皮肤：迷你展开恢复原布局，示例数据](docs/screenshots/mini-restore-matrix.png)
 
 ## 偏好设置（v1.9.9）
 
@@ -222,6 +241,25 @@ Use **⋯ → Online updates → Update and restart** for a single-click check, 
 Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. The personal repository is public. Access to the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
 
 All screenshots use **synthetic accounts and usage**. Widget captures use actual application controls; the warning notification card is an explicitly labelled Windows notification illustration. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.
+### Observe the cost of a single task
+
+Use **Recorded period delta** to observe usage before and after a code-generation, troubleshooting or other Copilot task:
+
+1. Click **Add record point** before the task.
+2. **Wait for the first successful sample to establish the zero baseline before starting**.
+3. After the task, wait for the source page to reflect usage and for a successful widget refresh.
+4. Inspect the delta card and its cumulative curve or individual sample changes. Delete and add a new point for another observation; existing history is retained.
+
+This measures observed **INTERNAL USD usage changes during the recorded period**. Source updates may lag, and concurrent tasks or accounts can contribute. Avoid unrelated parallel usage and select the relevant account when appropriate. It is not exact API-level attribution or a per-task bill. Unobserved periods are never fabricated.
+
+![Matrix skin: record-point workflow with synthetic data](docs/screenshots/record-point-matrix-en.png)
+
+![Matrix skin: dedicated recorded-delta chart with synthetic data](docs/screenshots/recorded-delta-matrix-en.png)
+
+The example monthly total is **$1,234.56**. The first recorded reading is **$623.51**, producing **+$611.05** across 50 samples. This multi-day illustration explains the calculation; it is not the cost of a real single task.
+
+![Matrix skin: mini restores the previous layout, synthetic data](docs/screenshots/mini-restore-matrix-en.png)
+
 ### Preferences in v1.9.9
 
 Open **⋯ → Settings…**, or right-click the mini widget / tray icon. Choose Chinese or English, a 15/30/60/120/300/600-second refresh interval, and 10/15/20/30/60 FPS. Settings apply immediately and persist locally. Thresholds require Apply or Enter.
