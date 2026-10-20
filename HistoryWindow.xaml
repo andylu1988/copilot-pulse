@@ -6,21 +6,22 @@
     <Grid Margin="28,22,28,22">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Grid Background="Transparent" Margin="0,0,0,24">
-        <StackPanel><TextBlock Text="COPILOT PULSE / HISTORY" FontSize="10" Foreground="{DynamicResource SkinAccent}" FontWeight="SemiBold"/><TextBlock Text="用量历史" FontSize="26" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel><TextBlock Text="COPILOT PULSE / HISTORY" FontSize="10" Foreground="{DynamicResource SkinAccent}" FontWeight="SemiBold"/><TextBlock x:Name="HistoryTitleText" Text="用量历史" FontSize="26" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><TextBlock x:Name="ConnectionLabel" Text="本机记录" VerticalAlignment="Center" Foreground="#7EBEAB" FontSize="11" Margin="0,0,18,0"/><Button x:Name="StorageButton" Content="历史文件夹 ↗" FontSize="10" Click="OpenStorage" Margin="0,0,8,0"/><Button Click="CloseHistory" ToolTip="关闭历史窗口" AutomationProperties.Name="关闭历史窗口"><Path Width="13" Height="13" Stroke="{DynamicResource SkinMuted}" StrokeThickness="1.6" Data="M1,1 L12,12 M12,1 L1,12"/></Button></StackPanel>
       </Grid>
-      <Grid Grid.Row="1" Margin="0,0,0,22">
+      <Grid x:Name="RangeControlsGrid" Grid.Row="1" Margin="0,0,0,22">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <Button x:Name="SeriesButton" Content="总用量  ▾" Click="ChooseSeries" FontSize="12" Background="{DynamicResource SkinHover}" Foreground="{DynamicResource SkinText}" Padding="13,9" MaxWidth="340" HorizontalAlignment="Left" Margin="0,0,12,0"/>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="TodayButton" Content="今天" Tag="today" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="HoursButton" Content="24 小时" Tag="24h" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="WeekButton" Content="7 天" Tag="7d" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="MonthButton" Content="本月" Tag="month" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="MonthPickerButton" Content="月份 ▾" Click="ChooseMonth" FontSize="12" Margin="2,0"/></StackPanel>
+        <StackPanel x:Name="RangeButtons" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="TodayButton" Content="今天" Tag="today" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="HoursButton" Content="24 小时" Tag="24h" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="WeekButton" Content="7 天" Tag="7d" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="MonthButton" Content="本月" Tag="month" Click="ChangeRange" FontSize="12" Margin="2,0"/><Button x:Name="MonthPickerButton" Content="月份 ▾" Click="ChooseMonth" FontSize="12" Margin="2,0"/></StackPanel>
         <TextBlock x:Name="PeriodLabel" Grid.Row="1" Grid.ColumnSpan="2" Text="本月" FontSize="12" Foreground="{DynamicResource SkinMuted}" Margin="0,9,0,0"/>
       </Grid>
       <Grid Grid.Row="2" Margin="0,0,0,24">
-        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="0.75*"/></Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="0"/><ColumnDefinition Width="0.75*"/></Grid.ColumnDefinitions>
         <StackPanel><TextBlock Text="区间最后读数" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="LatestValue" Text="—" FontSize="30" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
-        <StackPanel Grid.Column="1"><TextBlock Text="区间净变化" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="NetValue" Text="—" FontSize="30" FontWeight="SemiBold" Foreground="#79D9BF" Margin="0,6,0,0"/></StackPanel>
-        <StackPanel Grid.Column="2"><TextBlock Text="成功采样" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="SampleCount" Text="0 次" FontSize="30" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Grid.Column="1"><TextBlock x:Name="NetLabel" Text="区间净变化" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="NetValue" Text="—" FontSize="30" FontWeight="SemiBold" Foreground="#79D9BF" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Grid.Column="2" Visibility="Collapsed"><TextBlock Text="基准周期增量" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="BaselineValue" Text="—" FontSize="30" FontWeight="SemiBold" Foreground="#79D9BF" Margin="0,6,0,0"/><TextBlock x:Name="BaselineCoverage" Text="未设置基准时间" FontSize="9" Foreground="{DynamicResource SkinMuted}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel>
+        <StackPanel Grid.Column="3"><TextBlock Text="成功采样" FontSize="11" Foreground="{DynamicResource SkinMuted}"/><TextBlock x:Name="SampleCount" Text="0 次" FontSize="30" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
       </Grid>
       <Grid Grid.Row="3" Margin="0,0,0,10">
         <StackPanel Orientation="Horizontal"><Button x:Name="CumulativeButton" Content="累计用量" Tag="cumulative" Click="ChangeMode" FontSize="11" Padding="10,6"/><Button x:Name="ChangesButton" Content="单次变化" Tag="changes" Click="ChangeMode" FontSize="11" Padding="10,6" Margin="5,0,0,0"/></StackPanel>

@@ -13,6 +13,7 @@ public partial class MainWindow
 {
     private HistoryRepository? history;
     private HistoryWindow? historyWindow;
+    private HistoryWindow? recordingWindow;
     private IReadOnlyList<HistoryFrame>? demoHistory;
     private int miniRevision;
     private DateTimeOffset miniHistoryUpdated;
@@ -43,7 +44,19 @@ public partial class MainWindow
             DateTimeOffset start = HistoryRanges.Start(preferences.HistoryRange, now);
             DateTimeOffset end = HistoryRanges.End(preferences.HistoryRange, now);
             var frames = demoHistory != null ? demoHistory.Where(f => f.Time >= start && f.Time <= end).ToList() : (history == null ? Array.Empty<HistoryFrame>() : await Task.Run(() => history.ReadRange(start, end)));
+            bool hasBaseline = DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, out var baseline);
+            var baselineFrames = !hasBaseline ? Array.Empty<HistoryFrame>() : demoHistory != null ? demoHistory.Where(f => f.Time >= baseline && f.Time <= now).ToArray() : history == null ? Array.Empty<HistoryFrame>() : (await Task.Run(() => history.ReadRange(baseline, now))).ToArray();
             if (closing || request != miniRevision) return;
+            BaselinePanel.Visibility = hasBaseline ? Visibility.Visible : Visibility.Collapsed;
+            RecordPointButton.Content = hasBaseline ? UiText.T("删除记录点", "Delete record point") : UiText.T("增加记录点", "Add record point");
+            BaselineTitle.Text = UiText.T("记录区间增量  ↗", "Recorded period delta  ↗");
+            var baselinePoints = HistoryMath.Series(baselineFrames, null);
+            var baselineDelta = HistoryMath.BaselineNetChange(baselineFrames, null);
+            BaselineAmount.Text = baselineDelta.HasValue ? HistoryChart.Signed(baselineDelta.Value) : "—";
+            BaselineStart.Text = UiText.T($"基准 {SystemClock.LocalMinute(baseline)} · 本机时间", $"Baseline {SystemClock.LocalMinute(baseline)} · Local time");
+            BaselineSamples.Text = baselinePoints.Count == 0 ? UiText.T("等待首次成功采样", "Waiting for first successful sample") : UiText.T($"{baselinePoints.Count:N0} 次采样 · 实际 {SystemClock.Local(baselinePoints[0].Time):MM/dd HH:mm} → {SystemClock.Local(baselinePoints[^1].Time):MM/dd HH:mm}", $"{baselinePoints.Count:N0} samples · Observed {SystemClock.Local(baselinePoints[0].Time):MM/dd HH:mm} → {SystemClock.Local(baselinePoints[^1].Time):MM/dd HH:mm}");
+            BaselinePanel.ToolTip = UiText.T("持续保存成功刷新后的采样，重启后保留。首次采样为零点，按 UTC 月合计已观测增量；首次采样前和月界缺失的用量不补算。账户口径改变或整月无记录时不可计算。点击查看采样历史。", "Successful refreshes are recorded and retained after restart. The first sample starts at zero; observed changes are summed within UTC months. Usage before the first sample or missing at month boundaries is not estimated. Requires a consistent account basis with no missing months. Click to view sample history.");
+            BaselineHistory.SetData(baselineDelta.HasValue ? HistoryMath.RecordedSeries(baselineFrames, null) : Array.Empty<HistoryPoint>(), from: hasBaseline ? baseline : null, until: hasBaseline ? now : null);
             var points = HistoryMath.Series(frames, null);
             decimal? net = HistoryMath.NetChange(points);
             HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 {(net.HasValue ? HistoryChart.Signed(net.Value) : "—")}";
@@ -55,10 +68,47 @@ public partial class MainWindow
             MiniHistory.SetData(points, from: preferences.HistoryRange == "today" ? start : null, until: preferences.HistoryRange == "today" ? now : null);
             HistorySummary.Text = UiText.Translate(App.Demo ? "示例趋势 · 点击展开" : history?.LastError ?? $"{HistoryRanges.Label(preferences.HistoryRange)} · {frames.Count:N0} 次记录 · 点击展开");
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { HistorySummary.Text = "历史暂不可读 · 点击查看"; HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 —"; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { if (closing || request != miniRevision) return; HistorySummary.Text = "历史暂不可读 · 点击查看"; HistoryNetGrowth.Text = $"{HistoryRanges.Label(preferences.HistoryRange)}净增长 —"; BaselineAmount.Text = "—"; BaselineSamples.Text = UiText.T("历史暂不可读", "History temporarily unavailable"); }
     }
 
-    private void HistoryViewChanged() { SavePreferences(); _ = RefreshMiniHistoryAsync(); }
+    private void HistoryViewChanged()
+    {
+        SavePreferences();
+        _ = RefreshMiniHistoryAsync();
+        if (recordingWindow != null) _ = recordingWindow.ReloadAsync();
+    }
+
+    private void ToggleRecordPoint(object sender, RoutedEventArgs e)
+    {
+        bool active = DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, out _);
+        if (active)
+        {
+            preferences.MeasurementBaselineUtc = "";
+            recordingWindow?.Close();
+            RecordPointButton.Content = UiText.T("增加记录点", "Add record point");
+        }
+        else
+        {
+            // Start at the click, never backdate the session to an old cached reading.
+            DateTimeOffset point = DateTimeOffset.UtcNow;
+            preferences.MeasurementBaselineUtc = point.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            RecordPointButton.Content = UiText.T("删除记录点", "Delete record point");
+        }
+        SavePreferences();
+        _ = RefreshMiniHistoryAsync();
+        if (!active && monitor != null) _ = monitor.RefreshAsync();
+        if (historyWindow != null) _ = historyWindow.ReloadAsync();
+    }
+
+    private void OpenRecordingWindow(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(preferences.MeasurementBaselineUtc)) return;
+        if (recordingWindow != null) { recordingWindow.Show(); recordingWindow.Activate(); return; }
+        if (history == null && !App.Demo) return;
+        recordingWindow = new HistoryWindow(history, demoHistory, preferences, HistoryViewChanged, true) { Owner = this };
+        recordingWindow.Closed += (_, _) => recordingWindow = null;
+        recordingWindow.Show();
+    }
 
     private void OpenHistory(object sender, RoutedEventArgs e)
     {
@@ -92,6 +142,43 @@ public partial class MainWindow
     private async Task ReviewHistoryAsync(string directory)
     {
         Directory.CreateDirectory(directory);
+        foreach (string mode in new[] { "compact", "full" })
+        {
+            SetDisplayMode(mode); SetDisplayMode("mini");
+            var saved = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(preferences))!;
+            SettingsPolicy.Normalize(saved);
+            if (saved.MiniReturnMode != mode) throw new InvalidOperationException("Mini return persistence failed: " + mode);
+            preferences.MiniReturnMode = saved.MiniReturnMode;
+            ExpandMini(this, new RoutedEventArgs());
+            if (preferences.DisplayMode != mode || (DetailsPanel.Visibility == Visibility.Collapsed) != (mode == "compact")) throw new InvalidOperationException("Mini restore failed: " + mode);
+        }
+        preferences.MeasurementBaselineUtc = demoHistory![demoHistory.Count / 2].Time.ToUniversalTime().ToString("O");
+        SetDisplayMode("compact");
+        await RefreshMiniHistoryAsync();
+        await Task.Delay(180);
+        if (BaselinePanel.Visibility != Visibility.Visible || BaselineAmount.Text == "—") throw new InvalidOperationException("Baseline card did not render");
+        Capture(Path.Combine(directory, "baseline-compact.png"));
+        string beforeRangeChange = BaselineAmount.Text;
+        preferences.HistoryRange = "today"; await RefreshMiniHistoryAsync();
+        if (BaselineAmount.Text != beforeRangeChange) throw new InvalidOperationException("Baseline incorrectly depends on history range");
+        OpenRecordingWindow(this, new RoutedEventArgs());
+        OpenHistory(this, new RoutedEventArgs());
+        if (recordingWindow == null || historyWindow == null || ReferenceEquals(recordingWindow, historyWindow)) throw new InvalidOperationException("Independent recording window failed");
+        await recordingWindow.ReloadAsync(); await Task.Delay(200);
+        CaptureControl(recordingWindow, Path.Combine(directory, "recording-history.png"));
+        recordingWindow.Width = 730; await Task.Delay(100);
+        CaptureControl(recordingWindow, Path.Combine(directory, "recording-history-narrow.png"));
+        historyWindow.Close();
+        int originalSamples = demoHistory.Count;
+        ToggleRecordPoint(this, new RoutedEventArgs()); await RefreshMiniHistoryAsync();
+        if (recordingWindow != null || BaselinePanel.Visibility != Visibility.Collapsed || demoHistory.Count != originalSamples) throw new InvalidOperationException("Record point removal failed");
+        var clickTime = DateTimeOffset.UtcNow;
+        ToggleRecordPoint(this, new RoutedEventArgs()); await RefreshMiniHistoryAsync();
+        if (!DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, out var freshPoint) || freshPoint < clickTime || BaselineAmount.Text != "—") throw new InvalidOperationException("New record point reused cached data");
+        preferences.MeasurementBaselineUtc = demoHistory[demoHistory.Count / 2].Time.ToUniversalTime().ToString("O");
+        await RefreshMiniHistoryAsync();
+        File.WriteAllText(Path.Combine(directory, "feature-checks.txt"), "PASS: compact/full mini return; serialized return mode; independent baseline card and window; removal retains samples; new point never backdates cached data; baseline delta=" + BaselineAmount.Text);
+        preferences.HistoryRange = "month"; SetDisplayMode("full"); await RefreshMiniHistoryAsync();
         var window = new HistoryWindow(null, demoHistory) { Width = 960, Height = 680 };
         window.Show();
         await window.ReloadAsync();

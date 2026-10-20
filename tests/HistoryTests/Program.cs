@@ -1,4 +1,4 @@
-﻿using CopilotPulse;
+using CopilotPulse;
 
 string directory = Path.Combine(Path.GetFullPath(args[0]), "run-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(directory);
@@ -70,6 +70,53 @@ Check("default history range retains this month after restart", new Preferences(
 var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "2026-09", HistoryChanges = true }))!;
 Check("selected history range and mode survive serialization", restoredView.HistoryRange == "2026-09" && restoredView.HistoryChanges);
 Check("legacy all selection becomes current month", HistoryRanges.Normalize("all") == "month");
+
+var baselineUtcText = new DateTimeOffset(2026, 10, 20, 16, 30, 0, TimeSpan.Zero).ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+Check("baseline stores absolute UTC round trip", DateTimeOffset.TryParse(baselineUtcText, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind | System.Globalization.DateTimeStyles.AllowWhiteSpaces, out var baselineRoundTrip) && baselineRoundTrip == new DateTimeOffset(2026, 10, 20, 16, 30, 0, TimeSpan.Zero));
+var baselineRepo = new HistoryRepository(Path.Combine(directory, "baseline-boundaries"));
+baselineRepo.Record(Sample(new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero).AddMinutes(-1), 4), 60);
+baselineRepo.Record(Sample(new DateTimeOffset(2026, 10, 20, 8, 30, 0, TimeSpan.FromHours(8)), 5), 60);
+baselineRepo.Record(Sample(new DateTimeOffset(2026, 10, 20, 9, 30, 0, TimeSpan.FromHours(8)), 6), 60);
+var baselineUtc = new DateTimeOffset(2026, 10, 20, 0, 30, 0, TimeSpan.Zero);
+var baselineSamples = baselineRepo.ReadRange(baselineUtc, new DateTimeOffset(2026, 10, 20, 2, 0, 0, TimeSpan.Zero));
+Check("baseline range reads UTC samples without timezone reinterpretation", baselineSamples.Count == 2 && baselineSamples[0].Total == 5 && baselineSamples[1].Total == 6);
+Check("baseline delta uses existing series and account rules", HistoryMath.NetChange(HistoryMath.Series(baselineSamples, null)) == 1);
+Check("local minute converts to absolute UTC", SystemClock.TryParseLocalMinute("2026-10-20", "16:30", out var localBaselineUtc) && SystemClock.Local(localBaselineUtc).ToString("yyyy-MM-dd HH:mm") == "2026-10-20 16:30");
+var crossMonthBaseline = new[] {
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 9, 30, 23, 30, 0, TimeSpan.Zero), 100), 60),
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 9, 30, 23, 45, 0, TimeSpan.Zero), 110), 60),
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 15, 0, TimeSpan.Zero), 20), 60),
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 30, 0, TimeSpan.Zero), 35), 60)
+};
+Check("baseline cross-month delta sums each UTC month", HistoryMath.BaselineNetChange(crossMonthBaseline, null) == 25);
+var missingMonth = crossMonthBaseline.Select(f => HistoryFrame.From(Sample(f.Time.Month == 10 ? f.Time.AddMonths(1) : f.Time, f.Total), 60)).ToArray();
+Check("baseline never silently skips an unrecorded month", HistoryMath.BaselineNetChange(missingMonth, null) == null);
+Check("first baseline sample starts at zero", HistoryMath.BaselineNetChange(crossMonthBaseline.Take(1).ToArray(), null) == 0);
+Check("empty baseline has no reading", HistoryMath.BaselineNetChange(Array.Empty<HistoryFrame>(), null) == null);
+var recordedCurve = HistoryMath.RecordedSeries(crossMonthBaseline, null);
+Check("recorded curve starts at zero", recordedCurve[0].Value == 0);
+Check("recorded curve ends at observed cross-month delta", recordedCurve[^1].Value == 25);
+Check("UTC reset carries previous observed delta", recordedCurve[2].Value == 10 && recordedCurve[2].BreakBefore);
+Check("recorded curve preserves negative corrections", HistoryMath.RecordedSeries(samples, null)[3].Value == .14m);
+var recordPreferences = new Preferences { MeasurementBaselineUtc = baselineUtcText };
+var restoredRecord = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(recordPreferences))!;
+Check("record point survives preference restart", restoredRecord.MeasurementBaselineUtc == baselineUtcText);
+var journalBeforeDelete = File.ReadAllBytes(Path.Combine(baselineRepo.DirectoryPath, "2026-10.jsonl"));
+restoredRecord.MeasurementBaselineUtc = "";
+SettingsPolicy.Normalize(restoredRecord);
+Check("deleting record point preserves saved samples", journalBeforeDelete.SequenceEqual(File.ReadAllBytes(Path.Combine(baselineRepo.DirectoryPath, "2026-10.jsonl"))) && new HistoryRepository(baselineRepo.DirectoryPath).ReadAll().Count == 3);
+Check("baseline samples survive repository restart", new HistoryRepository(Path.Combine(directory, "baseline-boundaries")).ReadRange(baselineUtc, baselineUtc.AddHours(2)).Count == 2);
+var miniLegacy = new Preferences { DisplayMode = "mini", Compact = true };
+SettingsPolicy.Normalize(miniLegacy);
+Check("legacy mini preserves compact return", miniLegacy.MiniReturnMode == "compact");
+miniLegacy.MiniReturnMode = "full"; SettingsPolicy.Normalize(miniLegacy);
+Check("explicit full return survives normalization", miniLegacy.MiniReturnMode == "full");
+Check("invalid local dates rejected", !SystemClock.TryParseLocalMinute("2026-02-30", "12:00", out _));
+Check("invalid local clock rejected", !SystemClock.TryParseLocalMinute("2026-10-20", "24:00", out _));
+Check("baseline cumulative endpoints survive offline gaps", HistoryMath.BaselineNetChange(new[] {
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero), 1), 60),
+    HistoryFrame.From(Sample(new DateTimeOffset(2026, 10, 1, 2, 0, 0, TimeSpan.Zero), 2), 60)
+}, null) == 1);
 
 var china = TimeZoneInfo.CreateCustomTimeZone("Test UTC+8", TimeSpan.FromHours(8), "Test UTC+8", "Test UTC+8");
 var todayNow = new DateTimeOffset(2026, 10, 8, 14, 30, 0, TimeSpan.FromHours(8));
@@ -175,14 +222,14 @@ Check("runtime version follows project version", UpdatePolicy.Current == declare
 Check("four part assembly version normalized", UpdatePolicy.NormalizeVersion(new Version(1,11,2,0)).ToString() == "1.11.2");
 Check("missing installed library cannot report success", !UpdatePolicy.InstalledVersionMatches(Path.Combine(directory,"CopilotPulse.exe"), declaredVersion));
 string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
-string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.12.0/CopilotPulse-Setup-1.12.0-x64.exe";
+string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.13.0/CopilotPulse-Setup-1.13.0-x64.exe";
 string validDigest = "sha256:" + new string('a',64);
-Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,12,0));
-Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,12,0)) == null);
-Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
-Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
-try { UpdatePolicy.Parse(ReleaseJson("1.12.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
-try { UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,13,0));
+Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,13,0)) == null);
+Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
+Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
+try { UpdatePolicy.Parse(ReleaseJson("1.13.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
+try { UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
 string hashFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid()+".bin");
 File.WriteAllText(hashFile,"verified installer test");
 string expectedHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile)));
@@ -190,7 +237,7 @@ await UpdatePolicy.VerifyAsync(hashFile,expectedHash); Check("download hash veri
 try { await UpdatePolicy.VerifyAsync(hashFile,new string('0',64)); Check("tampered download rejected",false); } catch (InvalidDataException) { Check("tampered download rejected",true); }
 File.Delete(hashFile);
 var autoNow = new DateTimeOffset(2026,10,11,12,0,0,TimeSpan.FromHours(8));
-var candidate = UpdatePolicy.Parse(ReleaseJson("1.12.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
+var candidate = UpdatePolicy.Parse(ReleaseJson("1.13.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
 var autoState = new AutoUpdateState();
 Check("initial hourly check due", AutoUpdatePolicy.CheckDue(autoState, autoNow));
 autoState.LastAttemptUtc = autoNow;
@@ -210,7 +257,7 @@ resumed.Acknowledged = true;
 Check("opening notice cancels automatic installation", !AutoUpdatePolicy.InstallDue(resumed,candidate,autoNow.AddDays(3),true));
 var acknowledged = System.Text.Json.JsonSerializer.Deserialize<AutoUpdateState>(System.Text.Json.JsonSerializer.Serialize(resumed))!;
 Check("acknowledgement survives restart", acknowledged.Acknowledged);
-AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,13,0)},candidate.Repository,autoNow.AddDays(3));
+AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,14,0)},candidate.Repository,autoNow.AddDays(3));
 Check("different release gets full grace", !acknowledged.Acknowledged && acknowledged.FirstSeenUtc == autoNow.AddDays(3).ToUniversalTime());
 Check("mismatched candidate cannot install", !AutoUpdatePolicy.InstallDue(acknowledged,candidate,autoNow.AddDays(6),true));
 AutoUpdatePolicy.Observe(acknowledged,null,candidate.Repository,autoNow.AddDays(4));

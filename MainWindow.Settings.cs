@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,6 +32,11 @@ public partial class MainWindow
         UiText.Apply(this);
         RefreshUpdateBadge();
         if (historyWindow != null) { UiText.Apply(historyWindow); _ = historyWindow.ReloadAsync(); }
+        if (recordingWindow != null)
+        {
+            if (string.IsNullOrWhiteSpace(preferences.MeasurementBaselineUtc)) recordingWindow.Close();
+            else { UiText.Apply(recordingWindow); _ = recordingWindow.ReloadAsync(); }
+        }
         if (tray != null)
         {
             var old = tray.ContextMenuStrip;
@@ -69,6 +74,7 @@ public partial class MainWindow
         currentZone = zone;
         _ = RefreshMiniHistoryAsync();
         if (historyWindow != null) _ = historyWindow.ReloadAsync();
+        if (recordingWindow != null) _ = recordingWindow.ReloadAsync();
         settingsWindow?.UpdateClock();
     }
 }
@@ -147,6 +153,21 @@ internal sealed class SettingsWindow : Window
         error = Label("", 11); error.Foreground = Brushes.OrangeRed;
         Label(UiText.T("百分比范围 1–100；金额范围 $0.01–$1,000,000,000。未提供具体限额的账户仅支持金额警告。本次运行中，同月同阈值只提醒一次；新月份或重启后重新提醒。", "Percent: 1–100; amount: $0.01–$1,000,000,000. Accounts without a numeric quota support amount warnings only. Within each app session, each threshold warns once per UTC quota month; restarting allows a new notification."), 10);
         Section("系统时间与配额重置", "System time and quota reset"); zoneText = Label("", 11); resetText = Label("", 11); UpdateClock();
+        Section("基准周期增量", "Baseline Period Delta");
+        string baselineDate = DateTime.Today.ToString("yyyy-MM-dd"), baselineTime = "00:00";
+        if (DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind | System.Globalization.DateTimeStyles.AllowWhiteSpaces, out var savedBaseline)) { var localSaved = SystemClock.Local(savedBaseline); baselineDate = localSaved.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture); baselineTime = localSaved.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture); }
+        var baselineGrid = new Grid(); baselineGrid.ColumnDefinitions.Add(new ColumnDefinition()); baselineGrid.ColumnDefinitions.Add(new ColumnDefinition());
+        var dateBox = new TextBox { Text = baselineDate, Padding = new Thickness(8), Margin = new Thickness(0, 0, 6, 6), Background = Brushes.White, Foreground = Brushes.Black };
+        var timeBox = new TextBox { Text = baselineTime, Padding = new Thickness(8), Margin = new Thickness(6, 0, 0, 6), Background = Brushes.White, Foreground = Brushes.Black };
+        Grid.SetColumn(dateBox, 0); Grid.SetColumn(timeBox, 1); baselineGrid.Children.Add(dateBox); baselineGrid.Children.Add(timeBox); body.Children.Add(baselineGrid);
+        var baselineActions = new WrapPanel();
+        var baselineSave = new Button { Content = UiText.T("保存基准时间", "Save baseline"), Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(0, 0, 6, 0) };
+        var baselineClear = new Button { Content = UiText.T("清除", "Clear"), Padding = new Thickness(10, 7, 10, 7) };
+        var baselineError = Label("", 11); baselineError.Foreground = Brushes.OrangeRed;
+        baselineSave.Click += (_, _) => { baselineError.Foreground = Brushes.OrangeRed; if (!SystemClock.TryParseLocalMinute(dateBox.Text, timeBox.Text, out var utc) || utc > DateTimeOffset.UtcNow) { baselineError.Text = UiText.T("请输入不晚于当前的有效本机日期和时间。", "Enter a valid local date/time no later than now."); return; } preferences.MeasurementBaselineUtc = utc.ToString("O", System.Globalization.CultureInfo.InvariantCulture); baselineError.Foreground = Brushes.LimeGreen; baselineError.Text = UiText.T("已保存基准：" + SystemClock.Local(utc).ToString("yyyy/MM/dd HH:mm") + "（本机时间）", "Baseline saved: " + SystemClock.Local(utc).ToString("yyyy/MM/dd HH:mm") + " (local time)"); changed(); };
+        baselineClear.Click += (_, _) => { preferences.MeasurementBaselineUtc = ""; dateBox.Text = DateTime.Today.ToString("yyyy-MM-dd"); timeBox.Text = "00:00"; baselineError.Foreground = Brushes.OrangeRed; baselineError.Text = UiText.T("基准时间已清除。", "Baseline cleared."); changed(); };
+        baselineActions.Children.Add(baselineSave); baselineActions.Children.Add(baselineClear); body.Children.Add(baselineActions);
+        Label(UiText.T("格式：YYYY-MM-DD 和 HH:mm。输入的是本机时间；保存后转换为绝对 UTC，时区变化不会改写基准点。自定义区间会持续保存采样记录。", "Format: YYYY-MM-DD and HH:mm. Input is local time and is saved as absolute UTC; timezone changes do not move the baseline. Samples continue to be recorded for the custom period."), 10);
         Section("在线更新", "Online updates");
         var updates = new Button { Content = UiText.T("检查新版本 / 下载更新…", "Check version / download update…"), Padding = new Thickness(10,8,10,8), HorizontalAlignment = HorizontalAlignment.Left };
         updates.Click += (_, _) => { if (Owner is MainWindow main) main.OpenUpdates(); }; body.Children.Add(updates);

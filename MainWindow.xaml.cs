@@ -55,6 +55,7 @@ public partial class MainWindow : Window
             settingsWindow?.Close();
             skinSaveTimer.Stop();
             historyWindow?.Close();
+            recordingWindow?.Close();
             if (history != null) history.Changed -= HistoryChanged;
             SavePreferences();
             monitor?.Dispose();

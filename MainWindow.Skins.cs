@@ -38,6 +38,7 @@ public partial class MainWindow
         ApplyDisplayMode();
         RefreshDisplayEffects();
         historyWindow?.ApplySkin(paletteChanged);
+        recordingWindow?.ApplySkin(paletteChanged);
         if (tray?.ContextMenuStrip is { } menu)
         {
             menu.BackColor = DarkTrayRenderer.Surface;

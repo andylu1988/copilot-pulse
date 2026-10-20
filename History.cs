@@ -141,6 +141,26 @@ public sealed record HistoryPoint(DateTimeOffset Time, decimal Value, decimal? D
 
 public static class HistoryMath
 {
+    /// <summary>Observed cumulative gain since the first sample, preserving gaps and UTC resets.</summary>
+    public static IReadOnlyList<HistoryPoint> RecordedSeries(IReadOnlyList<HistoryFrame> frames, string? key)
+    {
+        var result = new List<HistoryPoint>();
+        decimal carried = 0, monthStart = 0, last = 0;
+        string? month = null;
+        foreach (var point in Series(frames, key))
+        {
+            if (point.Period != month)
+            {
+                carried = last;
+                monthStart = point.Value;
+                month = point.Period;
+            }
+            last = carried + point.Value - monthStart;
+            result.Add(point with { Value = last });
+        }
+        return result;
+    }
+
     // Accounts newly appearing or disappearing with zero cost do not change the total basis.
     // Keep full identities: the same login can belong to multiple enterprises.
     private static bool TotalBasisChanged(HistoryFrame previous, HistoryFrame current)
@@ -184,5 +204,46 @@ public static class HistoryMath
     {
         if (NetChangeUnavailableReason(points) != null) return null;
         return points[^1].Value - points[0].Value;
+    }
+
+    /// <summary>Baseline gain from a custom UTC start through current time, measured independently per UTC quota month.</summary>
+    public static decimal? BaselineNetChange(IReadOnlyList<HistoryFrame> frames, string? key)
+    {
+        var ordered = frames.OrderBy(f => f.Time).ToList();
+        if (ordered.Count == 0) return null;
+
+        decimal total = 0;
+        HistoryFrame? priorMonthLast = null;
+        foreach (var month in ordered.GroupBy(f => HistoryRanges.Period(f.Time)).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            var samples = month.OrderBy(f => f.Time).ToList();
+            if (priorMonthLast != null && (HistoryRanges.Period(priorMonthLast.Time.ToUniversalTime().AddMonths(1)) != month.Key ||
+                (key == null && TotalBasisChanged(priorMonthLast, samples[0])))) return null;
+
+            HistoryFrame? previous = null;
+            decimal firstValue = 0;
+            decimal lastValue = 0;
+            bool started = false;
+            foreach (var frame in samples)
+            {
+                var account = key == null ? null : frame.Accounts.FirstOrDefault(a => a.Key == key);
+                if (key != null && account == null) return null;
+                decimal value = key == null ? frame.Total : account!.Cost;
+
+                if (previous != null)
+                {
+                    // Cumulative readings retain the endpoint difference across offline gaps.
+                    // Charts still break the line across missing samples.
+                    if (key == null && TotalBasisChanged(previous, frame)) return null;
+                }
+
+                if (!started) { firstValue = value; started = true; }
+                lastValue = value;
+                previous = frame;
+            }
+            total += lastValue - firstValue;
+            priorMonthLast = samples[^1];
+        }
+        return total;
     }
 }

@@ -39,6 +39,17 @@
           <local:HistoryChart x:Name="MiniHistory" Grid.Column="1" Mini="True" Height="36" IsHitTestVisible="False"/><TextBlock x:Name="HistoryNetGrowth" Grid.Row="1" Grid.ColumnSpan="2" Text="本月净增长 —" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
         </Grid>
       </Button>
+      <Button x:Name="BaselinePanel" Click="OpenRecordingWindow" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="11,10" Background="{DynamicResource SkinChart}" Margin="0,8,0,0">
+        <StackPanel>
+          <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="130"/></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock x:Name="BaselineTitle" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="BaselineAmount" FontSize="23" FontWeight="SemiBold" Margin="0,5,0,3"/></StackPanel>
+            <local:HistoryChart x:Name="BaselineHistory" Grid.Column="1" Mini="True" Height="42" IsHitTestVisible="False"/>
+          </Grid>
+          <TextBlock x:Name="BaselineStart" FontSize="10" Foreground="{DynamicResource SkinMuted}"/>
+          <TextBlock x:Name="BaselineSamples" FontSize="9" Foreground="{DynamicResource SkinMuted}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Button>
+      <Button x:Name="RecordPointButton" Click="ToggleRecordPoint" Content="增加记录点" FontSize="11" Background="{DynamicResource SkinHover}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,7"/>
       <Border x:Name="DemoBadge" Visibility="Collapsed" CornerRadius="5" Background="#493720" Padding="8,5" Margin="0,12,0,0"><TextBlock Text="示例预览 · 虚构金额，非实时数据" Foreground="#F4C77E" FontSize="11"/></Border>
       <StackPanel x:Name="DetailsPanel">
         <Grid Margin="0,27,0,12"><TextBlock Text="企业用量" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="MONTH TO DATE" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SkinFaint}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
@@ -64,7 +75,7 @@
     <TextBlock x:Name="MiniUsageProgress" FontSize="10" Foreground="{DynamicResource SkinText}" Margin="14,0,14,1" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
     <Border x:Name="MiniTools" Background="{DynamicResource SkinPanel}" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,23" Visibility="Collapsed" Opacity="0">
       <StackPanel Orientation="Horizontal">
-        <Button Content="展开" FontSize="9" Padding="5,3" Click="ExpandMini" ToolTip="展开完整模式"/>
+        <Button Content="展开" FontSize="9" Padding="5,3" Click="ExpandMini" ToolTip="返回之前的显示模式"/>
         <Button Content="换肤" FontSize="9" Padding="5,3" Click="OpenSkins" ToolTip="选择皮肤"/>
         <Button Content="⋯" FontSize="11" Padding="5,1" Click="ShowSettings" ToolTip="设置 / 历史 / 刷新"/>
       </StackPanel>

@@ -82,7 +82,7 @@ public sealed class HistoryChart : FrameworkElement
         if (Changes) { minValue = Math.Min(0, minValue); maxValue = Math.Max(0, maxValue); }
         double padding = Math.Max(0.02, (maxValue - minValue) * 0.16);
         minValue -= padding;
-        if (!Changes) minValue = Math.Max(0, minValue);
+        if (!Changes && valid.All(x => x.value >= 0)) minValue = Math.Max(0, minValue);
         maxValue += padding;
         minTime = (rangeStart ?? points[0].Time).ToUnixTimeMilliseconds();
         maxTime = (rangeEnd ?? points[^1].Time).ToUnixTimeMilliseconds();

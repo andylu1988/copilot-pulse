@@ -4,7 +4,7 @@
 
 Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
 
-**v1.11.2 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.12.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
 
 [下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
 
@@ -22,6 +22,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 历史趋势 | 今天、24 小时、7 天、本月、指定月份；支持总用量与单个企业。 |
 | 两种图表 | 累计折线看走势，变化柱状图看相邻采样变化，悬停查看详细读数。 |
 | 区间净增长 | 完整与紧凑主卡片在小曲线下显示所选区间的总用量净增长，一起刷新。 |
+| 记录区间增量 | 点击“增加记录点”，单独采样并查看从该点开始的累计增量和单次变化；记录点与采样重启保留。 |
 | 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
 | 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
 | 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
@@ -53,7 +54,7 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 
 ## 下载与首次使用
 
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.11.2-x64.exe`。
+1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.12.0-x64.exe`。
 2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
 3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
 4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
@@ -75,6 +76,16 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 配额按 **UTC 月份**划分，中国时区月初重置时间为 **1 日 08:00**。“今天”仍按本机自然日计算。点击“月份 ▾”选择已有记录的月份，替代原来的“全部”。主卡片净增长随所选月份一起刷新。
 
 ![UTC 本月趋势与月份选择入口，示例数据](docs/screenshots/history-month-utc.png)
+
+## 记录区间增量（v1.12.0）
+
+在主界面点击 **增加记录点**，从点击时刻开始记录。历史趋势下方出现独立的 **记录区间增量** 卡片，随成功刷新更新；点击卡片可打开独立图表，查看总用量或单个账户的累计增量、每次采样变化。普通历史趋势的时间范围不会改变这个记录区间。
+
+首个成功读数作为零基线；取得可比较的新读数后显示增量。尚无有效读数时显示 `—`。记录点和采样保存在本机，退出、重启和升级后继续。点击 **删除记录点** 清除本次计量起点，保留已有历史；再次添加即可开始新一轮计量。
+
+也可在设置中输入本机日期时间 `YYYY-MM-DD HH:mm` 指定起点。应用按系统时区换算并保存 UTC 时间；系统时区改变后只改变显示时间。跨 UTC 配额月份时，累加各月实际采样内的变化，不推算漏采时段；缺少整月数据或账户口径无法比较时显示原因。应用未运行期间不会补造采样。
+
+迷你模式双击或点击展开时，会恢复上次的紧凑或完整模式；该选择重启后保留。
 
 ## 偏好设置（v1.9.9）
 
@@ -116,7 +127,8 @@ Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot C
 | 想做什么 | 怎么操作 |
 | --- | --- |
 | 只显示数字 | 主窗口“迷你”，或设置 / 换肤中的“迷你数字”。 |
-| 恢复大卡片 | 双击迷你框；右键可打开设置。 |
+| 恢复卡片 | 双击迷你框，恢复上次紧凑或完整模式；右键可打开设置。 |
+| 开始 / 删除计量 | 点击“增加记录点” / “删除记录点”；点击记录区间卡片查看独立图表。 |
 | 看当天增长 | 打开历史选择“今天”；主卡片净增长同步改为今天。 |
 | 看单个企业 | 历史窗口左上角选择企业；主卡片净增长始终按总用量计算。 |
 | 改刷新频率 | ⋯ → 设置 → 数据刷新频率；底部刷新按钮立即读取。 |
@@ -194,6 +206,16 @@ dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-
 ## English
 
 **Copilot Pulse puts your Copilot usage on the Windows desktop.** This unofficial widget reads the Microsoft internal Copilot Consumption page, with automatic refresh, enterprise details, local history, five time ranges, cumulative and change charts, three display modes, 22 built-in skins, and custom backgrounds.
+
+### Recorded period delta in v1.12.0
+
+Click **Add record point** on the main widget to start measuring from that moment. A separate **Recorded period delta** card appears below history and updates after successful refreshes. Click it for a dedicated chart with total or per-account cumulative delta and individual sample changes. Changing the regular history range does not change this recording period.
+
+The first successful reading starts at zero; comparable later readings produce a delta. Until a valid sample exists, the card shows `—`. The record point and samples survive restarts and upgrades. **Delete record point** removes the measurement start while preserving history. Add another point to start a new measurement.
+
+Settings also accepts a local start time in `YYYY-MM-DD HH:mm` format. It is converted using the Windows timezone and stored as an absolute UTC time. Across UTC quota months, only observed within-month changes are summed; missing intervals are not estimated. Missing whole months or incompatible account sets are reported as unavailable. No samples are fabricated while the app is closed.
+
+Expanding or double-clicking mini mode restores the previous compact or full layout, including after restart.
 
 Use **⋯ → Online updates → Update and restart** for a single-click check, download, verification, silent installation and client restart. The local version comes from the running assembly, and setup verifies the installed target version. Up-to-date clients do not download again.
 

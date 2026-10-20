@@ -22,12 +22,28 @@ public static class SettingsPolicy
         p.WarningMode = p.WarningMode == "amount" ? "amount" : "percent";
         p.WarningPercent = Math.Clamp(p.WarningPercent, 1, 100);
         p.WarningAmount = Math.Clamp(p.WarningAmount, .01m, 1_000_000_000m);
+        p.MiniReturnMode = p.MiniReturnMode is "compact" or "full" ? p.MiniReturnMode : p.Compact ? "compact" : "full";
+        if (!string.IsNullOrWhiteSpace(p.MeasurementBaselineUtc))
+        {
+            if (DateTimeOffset.TryParse(p.MeasurementBaselineUtc, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal, out var baseline)) p.MeasurementBaselineUtc = baseline.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+            else p.MeasurementBaselineUtc = "";
+        }
     }
 }
 
 public static class SystemClock
 {
     public static DateTimeOffset Local(DateTimeOffset time) => TimeZoneInfo.ConvertTime(time, TimeZoneInfo.Local);
+    public static bool TryParseLocalMinute(string dateText, string timeText, out DateTimeOffset utc)
+    {
+        utc = default;
+        if (!DateTime.TryParseExact(dateText.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var date)) return false;
+        if (!TimeSpan.TryParseExact(timeText.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out var clock)) return false;
+        var local = new DateTime(date.Year, date.Month, date.Day, clock.Hours, clock.Minutes, 0, DateTimeKind.Unspecified);
+        if (TimeZoneInfo.Local.IsInvalidTime(local) || TimeZoneInfo.Local.IsAmbiguousTime(local)) return false;
+        try { utc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, TimeZoneInfo.Local)); return true; } catch (ArgumentException) { return false; }
+    }
+    public static string LocalMinute(DateTimeOffset utc) => TimeZoneInfo.ConvertTime(utc, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
     public static string ZoneLabel(DateTimeOffset time)
     {
         var zone = TimeZoneInfo.Local;

@@ -52,6 +52,8 @@ public sealed class Preferences
     public string WarningMode { get; set; } = "percent";
     public decimal WarningPercent { get; set; } = 80;
     public decimal WarningAmount { get; set; } = 1000;
+    public string MeasurementBaselineUtc { get; set; } = "";
+    public string MiniReturnMode { get; set; } = "";
     public double Left { get; set; } = -1;
     public double Top { get; set; } = -1;
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -14,7 +14,11 @@ public partial class MainWindow
     private void InitializeDisplayMode()
     {
         preferences.DisplayMode=DisplayModes.Normalize(preferences.DisplayMode,preferences.Compact);
-        if(App.MiniAtStartup)preferences.DisplayMode="mini";
+        if(App.MiniAtStartup && preferences.DisplayMode!="mini")
+        {
+            preferences.MiniReturnMode=preferences.DisplayMode=="compact" ? "compact" : "full";
+            preferences.DisplayMode="mini";
+        }
         ApplyDisplayMode();
         RefreshNumericState();
     }
@@ -45,11 +49,14 @@ public partial class MainWindow
     }
     private void SetDisplayMode(string mode)
     {
-        preferences.DisplayMode=DisplayModes.Normalize(mode,preferences.Compact);
+        string normalizedMode = DisplayModes.Normalize(mode,preferences.Compact);
+        if(normalizedMode=="mini" && preferences.DisplayMode!="mini")
+            preferences.MiniReturnMode=preferences.DisplayMode=="compact" ? "compact" : "full";
+        preferences.DisplayMode=normalizedMode;
         ApplyDisplayMode();SavePreferences();skinWindow?.RefreshSelection();
     }
     private void EnterMini(object sender,RoutedEventArgs e)=>SetDisplayMode("mini");
-    private void ExpandMini(object sender,RoutedEventArgs e)=>SetDisplayMode("full");
+    private void ExpandMini(object sender,RoutedEventArgs e)=>SetDisplayMode(preferences.MiniReturnMode=="compact" ? "compact" : "full");
     private MenuItem BuildDisplayModeMenu()
     {
         var menu=new MenuItem {Header=UiText.Translate("显示模式")};
@@ -75,7 +82,7 @@ public partial class MainWindow
     {
         DependencyObject? node=e.OriginalSource as DependencyObject;
         while(node!=null) {if(node is Button)return;node=VisualTreeHelper.GetParent(node);}
-        if(e.ClickCount==2) {SetDisplayMode("full");e.Handled=true;return;}
+        if(e.ClickCount==2) {SetDisplayMode(preferences.MiniReturnMode=="compact" ? "compact" : "full");e.Handled=true;return;}
         if(e.LeftButton==MouseButtonState.Pressed) {DragMove();SavePreferences();}
     }
     private void MiniContextMenu(object sender,MouseButtonEventArgs e)
