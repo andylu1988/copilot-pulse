@@ -1,5 +1,18 @@
-﻿# Copilot Pulse
+# Copilot Pulse
 
+## 1.13.0：任务观察与用量预估 / Task observations and usage forecasts
+
+- 命名任务、采样健康、持久化任务记录、匿名 CSV / JSON、摘要与 PNG；迷你任务增量由主界面手动选择，默认月度累计。
+- 双任务对比、用量预估、UTC 重置本地显示；无上限不假定金额配额，延迟和不足数据暂停预测。
+- 冷却与免打扰、静默、重置 / 中断 / 恢复通知；可选全局快捷键、托盘用量、多显示器位置与窗口拖动。
+- 图表悬停 / 固定 / 缩放 / 框选 / 边界和异常标记，连接诊断与隐私过滤报告。
+- 四个等大毛玻璃按钮、高清圆角图标、宽版分类设置与合并皮肤页；历史窗口保持实色，移除公开演示入口。
+- 矩阵雨改为单帧合成，复用毛玻璃背景，减少窗口切换卡顿；测试程序缺少参数时输出用法而非崩溃。
+- Add named tasks, sampling health, saved task records, anonymous CSV / JSON, summaries and PNG reports; mini task delta is opt-in.
+- Add task comparison, usage forecasts with localized UTC reset times, notification controls, optional global shortcuts, tray usage, interactive charts and privacy-filtered diagnostics.
+- Refresh glass buttons, rounded high-resolution icon and categorized Settings with integrated skins; retain opaque history windows and remove public demo entry.
+- Composite Matrix rain into one frame and share frosted surfaces to reduce long rendering stalls. Add test-runner argument validation.
+- Screenshots, workflows and limitations: [中文 / English](docs/RELEASE-v1.13.0.md).
 ## 1.12.0：记录区间增量 / Recorded period delta
 
 - 新增单次任务用量观察场景：任务前增加记录点，待首个成功采样后运行任务，源页面更新后查看增量；数据可能延迟，包含并行用量，不代表精确单任务账单。
@@ -242,4 +255,3 @@ Windows 在 Codex 启动环境中会将旧 AppData 文件路径重定向到 Code
 默认尝试使用接收者当前 Windows 主账号进行 SSO，并在可取得企业 UPN 时提供账户提示。已保存的本机 WebView2 会话也可能决定当前登录账号；Windows 登录为个人/本地账号、多账号、MFA 或条件访问要求时，可能需要点击“连接 Microsoft 账户”手动完成企业登录。不是所有 corp 账号都有此内部站点权限，不能保证静默登录。安装包不包含制作者的登录会话、真实用量、历史或 API Key。
 
 安装源码位于 `installer/CopilotPulse.iss`，重复构建使用 `installer/Build-Installer.ps1 -CompilerPath <ISCC.exe> -WebViewBootstrapper <MicrosoftEdgeWebview2Setup.exe>`。编译器使用 Inno Setup 6.7.3，WebView2 引导程序必须有有效的 Microsoft 签名。
-

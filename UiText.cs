@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -13,8 +13,17 @@ internal static class UiText
     internal static string Language { get; set; } = "zh-CN";
     internal static bool English => Language == "en";
     internal static string T(string zh, string en) => English ? en : zh;
+    internal static string TaskName(string name) => name switch
+    {
+        "Recorded period" => T("记录区间增量", "Recorded period"),
+        "Untitled task" => T("未命名任务", "Untitled task"),
+        _ => name
+    };
     private static readonly Dictionary<string, string> Words = new()
     {
+        ["任务记录 / 导出 ↗"] = "Tasks / Export ↗",
+        ["开始任务计量"] = "Start task",
+        ["用量预估 ↗"] = "Usage forecast ↗",
         ["迷你"] = "Mini",
         ["换肤"] = "Appearance",
         ["展开"] = "Expand",

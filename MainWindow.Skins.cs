@@ -8,12 +8,13 @@ namespace CopilotPulse;
 
 public partial class MainWindow
 {
-    private SkinWindow? skinWindow;
+    private SkinPicker? skinWindow => settingsWindow?.SkinEditor;
     private readonly DispatcherTimer skinSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
 
     private void InitializeSkin()
     {
         SkinTheme.Configure(preferences);
+        GlassChrome.SetSource(this, FullBackdrop);
         ApplyPhotoBackground();
         PinButton.Foreground = Brush(Topmost ? SkinTheme.Current.Accent : SkinTheme.Current.Faint);
         skinSaveTimer.Tick += (_, _) => { skinSaveTimer.Stop(); SavePreferences(); };
@@ -39,6 +40,8 @@ public partial class MainWindow
         RefreshDisplayEffects();
         historyWindow?.ApplySkin(paletteChanged);
         recordingWindow?.ApplySkin(paletteChanged);
+        insightsWindow?.ApplySkin();
+        settingsWindow?.ApplySkin();
         if (tray?.ContextMenuStrip is { } menu)
         {
             menu.BackColor = DarkTrayRenderer.Surface;
@@ -58,10 +61,7 @@ public partial class MainWindow
 
     private void OpenSkins(object sender, RoutedEventArgs e)
     {
-        if (skinWindow != null) { skinWindow.Show(); skinWindow.Activate(); return; }
-        skinWindow = new SkinWindow(preferences, SkinEdited) { Owner = this };
-        skinWindow.Closed += (_, _) => { skinWindow = null; if (!App.Demo) SavePreferences(); };
-        skinWindow.Show();
+        OpenPreferences(); settingsWindow!.SelectPageForReview("skins");
     }
 
     private MenuItem BuildSkinMenu()

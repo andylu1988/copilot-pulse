@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -40,15 +40,17 @@ public partial class MainWindow
         Nodes<ComboBox>(settingsWindow!).ToArray()[0].SelectedIndex = 1;
         Check("language control applies English", preferences.Language == "en" && UiText.English);
         settingsWindow!.Close(); OpenPreferences(); await Task.Delay(180);
+        settingsWindow!.SelectPageForReview("warnings"); settingsWindow.UpdateLayout();
         Check("checkbox dark theme contrast", Nodes<CheckBox>(settingsWindow!).All(c => c.Foreground.ToString() == ((Brush)FindResource("SkinText")).ToString()));
-        Nodes<ComboBox>(settingsWindow!).ToArray()[4].SelectedIndex = 1;
+        Nodes<ComboBox>(settingsWindow!).Single().SelectedIndex = 1;
+        settingsWindow.UpdateLayout();
         var thresholdInput = Nodes<TextBox>(settingsWindow!).Single();
         var applyButton = Nodes<Button>(settingsWindow!).Single(b => (string?)b.Content == "Apply");
         thresholdInput.Text = "-5"; applyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check("invalid threshold rejected", preferences.WarningAmount == 1000);
         thresholdInput.Text = "1250.50"; applyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check("threshold control applies decimal amount", preferences.WarningAmount == 1250.50m);
-        Nodes<ComboBox>(settingsWindow!).ToArray()[4].SelectedIndex = 0;
+        Nodes<ComboBox>(settingsWindow!).Single().SelectedIndex = 0;
         CaptureControl(settingsWindow!, Path.Combine(directory, "settings-en.png"));
         Capture(Path.Combine(directory, "widget-en.png"));
         Check("english live status", StatusLabel.Text.Contains("Demo"));
@@ -153,7 +155,7 @@ public partial class MainWindow
         CaptureControl(aboutWindow, Path.Combine(directory, "about-en.png")); aboutWindow.Close();
         preferences.Language = "zh-CN"; ApplySettings();
         File.WriteAllText(Path.Combine(directory, "settings-review.json"), JsonSerializer.Serialize(new { passed = checks.Count, checks, zone = SystemClock.ZoneLabel(DateTimeOffset.Now) }, Store.Json));
-        historyWindow.Close(); settingsWindow.Close(); skinWindow!.Close();
+        historyWindow.Close(); settingsWindow.Close();
     }
     private static IEnumerable<T> Nodes<T>(DependencyObject node) where T : DependencyObject
     {

@@ -52,8 +52,21 @@ public sealed class Preferences
     public string WarningMode { get; set; } = "percent";
     public decimal WarningPercent { get; set; } = 80;
     public decimal WarningAmount { get; set; } = 1000;
+    public int ReminderRepeatMinutes { get; set; } = 60;
+    public bool NotificationsSilent { get; set; }
+    public bool QuietHoursEnabled { get; set; }
+    public int QuietStartHour { get; set; } = 22;
+    public int QuietEndHour { get; set; } = 8;
+    public bool ResetReminder { get; set; }
+    public int ResetReminderHours { get; set; } = 24;
+    public bool SamplingReminder { get; set; }
+    public int SamplingReminderMinutes { get; set; } = 10;
+    public bool RecoveryReminder { get; set; } = true;
+    public bool SetupGuideShown { get; set; }
+    public bool GlobalHotkeys { get; set; }
     public string MeasurementBaselineUtc { get; set; } = "";
     public string MiniReturnMode { get; set; } = "";
+    public bool MiniShowRecordDelta { get; set; }
     public double Left { get; set; } = -1;
     public double Top { get; set; } = -1;
 }

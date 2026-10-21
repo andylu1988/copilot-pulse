@@ -1,8 +1,9 @@
 <Window FontFamily="{DynamicResource SkinFont}" x:Class="CopilotPulse.HistoryWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:CopilotPulse" Title="Copilot Pulse · 用量历史" Width="960" Height="680" MinWidth="730" MinHeight="580" WindowStartupLocation="CenterScreen" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Foreground="{DynamicResource SkinText}" ResizeMode="CanResizeWithGrip" UseLayoutRounding="True">
-  <Border x:Name="HistorySurface" MouseLeftButtonDown="DragHeader" Margin="8" CornerRadius="21" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" Padding="0" Background="{DynamicResource SkinSurface}">
+  <Window.Resources><Style TargetType="Button" BasedOn="{StaticResource GlassButtonStyle}"/></Window.Resources>
+  <Border x:Name="HistorySurface" MouseLeftButtonDown="DragHeader" Margin="8" CornerRadius="21" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" Padding="0" Background="Transparent">
     <Border x:Name="HistoryPhotoShade" CornerRadius="20" Padding="0">
     <Grid>
-    <local:Atmosphere x:Name="HistoryAtmosphere" IsHitTestVisible="False"/>
+    <Border x:Name="HistoryBackdrop" Opacity="1" IsHitTestVisible="False"><Border x:Name="HistoryBackdropShade"><local:Atmosphere x:Name="HistoryAtmosphere"/></Border></Border>
     <Grid Margin="28,22,28,22">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Grid Background="Transparent" Margin="0,0,0,24">
@@ -27,7 +28,7 @@
         <StackPanel Orientation="Horizontal"><Button x:Name="CumulativeButton" Content="累计用量" Tag="cumulative" Click="ChangeMode" FontSize="11" Padding="10,6"/><Button x:Name="ChangesButton" Content="单次变化" Tag="changes" Click="ChangeMode" FontSize="11" Padding="10,6" Margin="5,0,0,0"/></StackPanel>
         <TextBlock x:Name="CoverageLabel" Text="从首次记录开始积累" FontSize="10" Foreground="{DynamicResource SkinMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
       </Grid>
-      <Border Grid.Row="4" Background="{DynamicResource SkinChart}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="12" Padding="8,8,8,1" ClipToBounds="True"><local:HistoryChart x:Name="Chart" MinHeight="170"/></Border>
+      <Border Grid.Row="4" Background="#18081118" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="12" Padding="8,8,8,1" ClipToBounds="True"><Grid><local:GlassBackdrop/><Border Background="#25101820"/><local:HistoryChart x:Name="Chart" MinHeight="170"/></Grid></Border>
       <StackPanel Grid.Row="5" Margin="0,15,0,0"><TextBlock x:Name="Footnote" Text="鼠标悬停查看读数 · 采样中断与跨月重置分段显示" FontSize="10" Foreground="{DynamicResource SkinMuted}" TextWrapping="Wrap"/><TextBlock x:Name="HistoryNotice" Text="记录仅保存在本机；安装前的历史无法补回。" FontSize="10" Foreground="{DynamicResource SkinMuted}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
     </Grid>
     </Grid>

@@ -16,20 +16,23 @@ public partial class MainWindow
     private void OpenPreferences()
     {
         if (settingsWindow != null) { settingsWindow.Show(); settingsWindow.Activate(); return; }
-        settingsWindow = new SettingsWindow(preferences, ApplySettings) { Owner = this };
+        settingsWindow = new SettingsWindow(preferences, ApplySettings, SkinEdited) { Owner = this };
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         settingsWindow.Show();
     }
     private void ApplySettings()
     {
         SettingsPolicy.Normalize(preferences);
+        SynchronizeTaskBaseline();
         UiText.Language = preferences.Language;
+        if (diagnosticEntry != null) diagnosticEntry.Content = UiText.T("连接诊断", "Connection diagnostics");
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         SkinEdited();
         skinWindow?.RefreshSelection();
         if (data != null) RenderData(data);
         SetStatus(status);
         UiText.Apply(this);
+        if (tasksWindow != null) { tasksWindow.ApplyLanguage(); _ = tasksWindow.ReloadAsync(); }
         RefreshUpdateBadge();
         if (historyWindow != null) { UiText.Apply(historyWindow); _ = historyWindow.ReloadAsync(); }
         if (recordingWindow != null)
@@ -42,10 +45,12 @@ public partial class MainWindow
             var old = tray.ContextMenuStrip;
             tray.ContextMenuStrip = BuildTrayMenu();
             old?.Dispose();
-            tray.Text = UiText.Translate("Copilot Pulse · 本月用量");
+            UpdateTrayTooltip();
         }
         _ = RefreshMiniHistoryAsync();
         EvaluateWarning(false);
+        ConfigureHotkeys(); EvaluateReminders(true);
+        insightsWindow?.Close();
         SavePreferences();
     }
     private void EvaluateWarning(bool notify)
@@ -59,8 +64,7 @@ public partial class MainWindow
             : UiText.T($"{active.Count} 个账户已达到 {preferences.WarningPercent:0.##}% 配额警告阈值。", $"{active.Count} account(s) reached the {preferences.WarningPercent:0.##}% quota warning threshold.");
         WarningTitle.Text = UiText.T("用量警告 · 已达到阈值", "Usage warning · Threshold reached");
         WarningText.Text = message;
-        if (notify && !App.Demo && !App.Smoke && tray != null && usageWarnings.ShouldNotify(data, preferences))
-            tray.ShowBalloonTip(7000, UiText.T("Copilot Pulse · 用量警告", "Copilot Pulse · Usage warning"), message, System.Windows.Forms.ToolTipIcon.Warning);
+        if (notify) EvaluateReminders(true);
     }
     private void CheckSystemZone()
     {
@@ -79,28 +83,22 @@ public partial class MainWindow
     }
 }
 
-internal sealed class SettingsWindow : Window
+internal sealed partial class SettingsWindow : Window
 {
     private readonly Preferences preferences;
     private readonly Action changed;
     private bool building;
-    private readonly StackPanel body = new();
+    private readonly Action appearanceChanged;
+    internal SkinPicker SkinEditor { get; private set; } = null!;
+    private StackPanel body = new();
     private TextBlock? zoneText, resetText;
     private TextBox? threshold;
     private TextBlock? error;
-    internal SettingsWindow(Preferences preferences, Action changed)
+    internal SettingsWindow(Preferences preferences, Action changed, Action? appearanceChanged = null)
     {
-        this.preferences = preferences; this.changed = changed;
+        this.preferences = preferences; this.changed = changed; this.appearanceChanged = appearanceChanged ?? changed;
         Title = UiText.T("Copilot Pulse · 设置", "Copilot Pulse · Settings"); Icon = BrandIcon.Window;
-        Width = 520; SizeToContent = SizeToContent.Height; MaxHeight = SystemParameters.WorkArea.Height - 32;
-        WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize; AllowsTransparency = true; Background = Brushes.Transparent;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        SetResourceReference(ForegroundProperty, "SkinText"); SetResourceReference(FontFamilyProperty, "SkinFont");
-        var surface = new Border { Margin = new Thickness(8), Padding = new Thickness(24), CornerRadius = new CornerRadius(20), BorderThickness = new Thickness(1) };
-        surface.SetResourceReference(Border.BackgroundProperty, "SkinPanel"); surface.SetResourceReference(Border.BorderBrushProperty, "SkinEdge");
-        var scroll = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        surface.Child = scroll; Content = surface;
-        surface.MouseLeftButtonDown += (_, e) => WindowDrag.TryMove(this, e);
+        InitializeShell();
         Build();
     }
     private TextBlock Label(string text, double size = 12)
@@ -119,16 +117,15 @@ internal sealed class SettingsWindow : Window
     }
     private void Build()
     {
-        building = true; body.Children.Clear();
-        var title = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        title.Children.Add(new TextBlock { Text = UiText.T("偏好设置", "Preferences"), FontSize = 24, FontWeight = FontWeights.SemiBold });
-        var close = new Button { Content = "✕", HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(9, 5, 9, 5) };
-        close.Click += (_, _) => Close(); title.Children.Add(close); body.Children.Add(title);
-        Label(UiText.T("修改立即生效，自动保存到本机。", "Changes apply immediately and are saved on this PC."), 11);
+        building = true; BeginPages();
+        Page("general", "常规", "General", "语言和采样频率", "Language and sampling interval");
         Section("语言 / Language", "Language / 语言");
         Choices(new[] { "简体中文", "English" }, preferences.Language == "en" ? 1 : 0, i => { preferences.Language = i == 1 ? "en" : "zh-CN"; changed(); Build(); });
         Section("数据刷新频率", "Data refresh interval");
         Choices(Array.ConvertAll(SettingsPolicy.RefreshOptions, n => UiText.T($"{n} 秒", $"{n} seconds")), Array.IndexOf(SettingsPolicy.RefreshOptions, preferences.RefreshSeconds), i => { preferences.RefreshSeconds = SettingsPolicy.RefreshOptions[i]; changed(); });
+        Page("skins", "皮肤", "Skins", "选择皮肤、实时预览与特效调节", "Skin gallery, live preview and effects");
+        SkinEditor = new SkinPicker(preferences, () => { this.appearanceChanged(); ApplySkin(); }); body.Children.Add(SkinEditor);
+        Page("appearance", "外观", "Appearance", "皮肤动画与数字字体", "Skin animation and number font");
         Section("皮肤动画帧率", "Skin animation frame rate");
         Choices(Array.ConvertAll(SettingsPolicy.FpsOptions, n => $"{n} FPS"), Array.IndexOf(SettingsPolicy.FpsOptions, preferences.AnimationFps), i => { preferences.AnimationFps = SettingsPolicy.FpsOptions[i]; changed(); });
         var motion = new CheckBox { Content = UiText.T("减少动态效果", "Reduce motion"), IsChecked = preferences.ReduceMotion, Margin = new Thickness(0, 4, 0, 0) };
@@ -138,6 +135,7 @@ internal sealed class SettingsWindow : Window
         Choices(Array.ConvertAll(SettingsPolicy.NumberFonts, f => f == "skin" ? UiText.T("跟随皮肤（液晶 / 像素 / 辉光管）", "Follow skin (LCD / pixels / nixie)") : f), Array.IndexOf(SettingsPolicy.NumberFonts, preferences.NumberFont), i => { preferences.NumberFont = SettingsPolicy.NumberFonts[i]; changed(); Build(); });
         var fontPreview = Label("$1,234.56  ·  78.90%", 26);
         fontPreview.FontFamily = new FontFamily(SettingsPolicy.ResolveFont("Segoe UI", preferences));
+        Page("warnings", "警告", "Warnings", "配置用量阈值", "Configure usage thresholds");
         Section("用量警告", "Usage warnings");
         var warning = new CheckBox { Content = UiText.T("启用警告（界面提示 + 系统通知）", "Enable warnings (widget + system notification)"), IsChecked = preferences.WarningEnabled, Margin = new Thickness(0, 0, 0, 9) };
         warning.SetResourceReference(Control.ForegroundProperty, "SkinText");
@@ -151,7 +149,9 @@ internal sealed class SettingsWindow : Window
         Grid.SetColumn(apply, 1); input.Children.Add(apply); body.Children.Add(input); apply.Click += (_, _) => CommitThreshold();
         threshold.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) { CommitThreshold(); e.Handled = true; } };
         error = Label("", 11); error.Foreground = Brushes.OrangeRed;
-        Label(UiText.T("百分比范围 1–100；金额范围 $0.01–$1,000,000,000。未提供具体限额的账户仅支持金额警告。本次运行中，同月同阈值只提醒一次；新月份或重启后重新提醒。", "Percent: 1–100; amount: $0.01–$1,000,000,000. Accounts without a numeric quota support amount warnings only. Within each app session, each threshold warns once per UTC quota month; restarting allows a new notification."), 10);
+        Label(UiText.T("百分比范围 1–100；金额范围 $0.01–$1,000,000,000。未提供具体限额的账户仅支持金额警告。提醒冷却跨重启保存，静音不隐藏界面警告。", "Percent: 1–100; amount: $0.01–$1,000,000,000. Accounts without a numeric quota support amount warnings only. Reminder cooldown persists after restart; muted notifications do not hide widget warnings."), 10);
+        BuildReminderSettings();
+        Page("measurement", "计量与时间", "Measurement", "本机时区与自定义基准", "Local timezone and custom baseline");
         Section("系统时间与配额重置", "System time and quota reset"); zoneText = Label("", 11); resetText = Label("", 11); UpdateClock();
         Section("基准周期增量", "Baseline Period Delta");
         string baselineDate = DateTime.Today.ToString("yyyy-MM-dd"), baselineTime = "00:00";
@@ -168,6 +168,7 @@ internal sealed class SettingsWindow : Window
         baselineClear.Click += (_, _) => { preferences.MeasurementBaselineUtc = ""; dateBox.Text = DateTime.Today.ToString("yyyy-MM-dd"); timeBox.Text = "00:00"; baselineError.Foreground = Brushes.OrangeRed; baselineError.Text = UiText.T("基准时间已清除。", "Baseline cleared."); changed(); };
         baselineActions.Children.Add(baselineSave); baselineActions.Children.Add(baselineClear); body.Children.Add(baselineActions);
         Label(UiText.T("格式：YYYY-MM-DD 和 HH:mm。输入的是本机时间；保存后转换为绝对 UTC，时区变化不会改写基准点。自定义区间会持续保存采样记录。", "Format: YYYY-MM-DD and HH:mm. Input is local time and is saved as absolute UTC; timezone changes do not move the baseline. Samples continue to be recorded for the custom period."), 10);
+        Page("updates", "更新与链接", "Updates & links", "版本更新与使用文档", "Version updates and documentation");
         Section("在线更新", "Online updates");
         var updates = new Button { Content = UiText.T("检查新版本 / 下载更新…", "Check version / download update…"), Padding = new Thickness(10,8,10,8), HorizontalAlignment = HorizontalAlignment.Left };
         updates.Click += (_, _) => { if (Owner is MainWindow main) main.OpenUpdates(); }; body.Children.Add(updates);
@@ -178,7 +179,7 @@ internal sealed class SettingsWindow : Window
         Link(UiText.T("用量网页", "Usage page"), SourceMonitor.Target);
         Link(UiText.T("使用文档", "User guide"), "https://github.com/andylu1988/copilot-pulse#readme");
         Link(UiText.T("EMU 项目", "EMU project"), "https://github.com/andylu_microsoft/copilot-pulse"); body.Children.Add(links);
-        building = false;
+        EndPages(); building = false;
     }
     private void CommitThreshold()
     {

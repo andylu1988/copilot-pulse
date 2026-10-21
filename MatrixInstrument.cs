@@ -12,7 +12,7 @@ public sealed partial class MoneyReadout
         // The background rails are generated art; all labels, amounts and states remain live UI.
         dc.DrawRoundedRectangle(DisplayArt.Brush(p.Bottom, .36), null, new Rect(10, 23, 208, 51), 7, 7);
         Label("COPILOT", 7.2, p.Muted, 16, 13);
-        Label("MTD / USD", 6.4, p.Faint, 158, 13);
+        Label(RecordedPeriod ? "SESSION / USD" : "MTD / USD", 6.4, p.Faint, RecordedPeriod ? 143 : 158, 13);
         dc.DrawLine(new Pen(DisplayArt.Brush(p.Accent, .28), .6), new Point(16, 26), new Point(212, 26));
         DisplayArt.Money(dc, new Rect(17, 31, 194, 38), amount, p, Phase, Pulse, dpi);
         bool example = Preview || state == "demo";

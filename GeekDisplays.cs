@@ -115,6 +115,7 @@ public sealed partial class MoneyReadout
         bool debugger = p.Id == "debug";
         double left = debugger ? 30 : 13;
         string title = p.Id switch { "shell" => "> copilot usage --month", "amber" => "COPILOT / MONTH / USD", "scope" => "COPILOT / VECTOR FX", _ => "watch: usage.monthly" };
+        if (RecordedPeriod) title = p.Id == "shell" ? "> copilot usage --session" : "COPILOT / SESSION / USD";
         Label(title, 7, p.Muted, left, 8);
         if (p.Id == "shell") dc.DrawLine(new Pen(DisplayArt.Brush(p.Edge), .7), new Point(13, 23), new Point(215, 23));
         if (p.Id == "scope") Label("USD", 6.5, p.Accent, 195, 19);

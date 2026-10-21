@@ -162,6 +162,7 @@ internal static class SkinTheme
         surface.CornerRadius=new CornerRadius(radius);shade.CornerRadius=new CornerRadius(Math.Max(0,radius-1));
         var brushes=Backdrop(Current,surface.ActualWidth>0?surface.ActualWidth:wide?944:388,surface.ActualHeight>0?surface.ActualHeight:wide?664:740,wide);
         surface.Background=brushes.Background;shade.Background=brushes.Shade;
+        GlassChrome.Refresh(surface);
     }
 
     private static BitmapSource LoadImage(Uri uri)

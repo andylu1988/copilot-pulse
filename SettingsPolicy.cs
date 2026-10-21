@@ -22,6 +22,11 @@ public static class SettingsPolicy
         p.WarningMode = p.WarningMode == "amount" ? "amount" : "percent";
         p.WarningPercent = Math.Clamp(p.WarningPercent, 1, 100);
         p.WarningAmount = Math.Clamp(p.WarningAmount, .01m, 1_000_000_000m);
+        if (p.ReminderRepeatMinutes is not (0 or 60 or 240 or 1440)) p.ReminderRepeatMinutes = 60;
+        p.QuietStartHour = Math.Clamp(p.QuietStartHour, 0, 23);
+        p.QuietEndHour = Math.Clamp(p.QuietEndHour, 0, 23);
+        p.ResetReminderHours = Math.Clamp(p.ResetReminderHours, 1, 168);
+        p.SamplingReminderMinutes = Math.Clamp(p.SamplingReminderMinutes, 2, 120);
         p.MiniReturnMode = p.MiniReturnMode is "compact" or "full" ? p.MiniReturnMode : p.Compact ? "compact" : "full";
         if (!string.IsNullOrWhiteSpace(p.MeasurementBaselineUtc))
         {

@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,20 +9,21 @@ using System.Windows.Media;
 
 namespace CopilotPulse;
 
-public partial class SkinWindow : Window
+public partial class SkinPicker : UserControl
 {
     private readonly Preferences preferences;
     private readonly Action changed;
     private bool updating = true;
     private readonly List<(string Id, Border Border, TextBlock Check)> tiles = new();
 
-    public SkinWindow(Preferences preferences, Action changed)
+    public SkinPicker(Preferences preferences, Action changed)
     {
         this.preferences = preferences;
         this.changed = changed;
         InitializeComponent();
-        Icon = BrandIcon.Window;
-        MaxHeight = SystemParameters.WorkArea.Height;
+        Loaded += (_, _) => UiText.Apply(this);
+
+
         BuildTiles();
         RefreshSelection();
         UiText.Apply(this);
@@ -86,20 +87,20 @@ public partial class SkinWindow : Window
         if (id == "custom" && !File.Exists(preferences.CustomBackgroundPath)) { ChooseImage(this, new RoutedEventArgs()); return; }
         preferences.SkinId = id;
         changed();
-        BuildTiles(); RefreshSelection();
+        RefreshSelection();
     }
 
     private void ChooseImage(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Title = UiText.Translate("选择自定义皮肤图片"), Filter = UiText.Translate("背景图片") + "|*.png;*.jpg;*.jpeg;*.bmp", CheckFileExists = true, Multiselect = false };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try
         {
             string local = SkinImages.Import(dialog.FileName);
             preferences.CustomBackgroundPath = local;
             preferences.CustomFocusX = 0.5; preferences.CustomFocusY = 0.35;
             preferences.SkinId = "custom";
-            changed(); BuildTiles(); RefreshSelection();
+            changed(); RefreshSelection();
             StatusText.Text = UiText.Translate("图片已保存。可用下方滑块调整遮罩和取景。");
         }
         catch (Exception ex) when (SkinImages.IsImageError(ex)) { StatusText.Text = UiText.Translate("未能加载图片。请选择有效的 PNG、JPG 或 BMP，大小不超过 25 MB。"); }
@@ -135,6 +136,7 @@ public partial class SkinWindow : Window
         UiText.Apply(this);
     }
 
+    internal void SelectForReview(string id) => SelectSkin(id);
     internal double PreviewAnimationIntervalMs => LivePreview.AnimationIntervalMs;
     internal bool PreviewAnimationRunning => LivePreview.AnimationRunning;
     internal void SetReviewEffects(double intensity, double speed) { IntensitySlider.Value = intensity * 100; SpeedSlider.Value = speed * 100; }
@@ -143,9 +145,5 @@ public partial class SkinWindow : Window
     private void ChangeDisplay(object sender,RoutedEventArgs e) { preferences.DisplayMode=(string)((Button)sender).Tag;changed();RefreshSelection(); }
     private void ToggleMotion(object sender,RoutedEventArgs e) { preferences.ReduceMotion=!preferences.ReduceMotion;changed();RefreshSelection(); }
 
-    private void DragHeader(object sender, MouseButtonEventArgs e)
-    {
-        if (WindowDrag.TryMove(this, e)) {}
-    }
-    private void ClosePicker(object sender, RoutedEventArgs e) => Close();
+
 }

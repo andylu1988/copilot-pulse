@@ -33,6 +33,7 @@ public partial class HistoryWindow : Window
     {
         InitializeComponent();
         Icon = BrandIcon.Window;
+        GlassChrome.SetSource(this, HistoryBackdrop);
         this.repository = repository;
         this.demo = demo;
         viewPreferences = preferences ?? new Preferences();
@@ -43,8 +44,8 @@ public partial class HistoryWindow : Window
         changes = !recordingMode && viewPreferences.HistoryChanges;
         if (recordingMode) NetLabel.Text = UiText.T("记录区间增量", "Recorded period delta");
         StorageButton.ToolTip = repository?.DirectoryPath ?? "示例模式";
-        HistorySurface.SizeChanged += (_, _) => SkinTheme.ApplySurface(HistorySurface, HistoryPhotoShade, true);
-        SkinTheme.ApplySurface(HistorySurface, HistoryPhotoShade, true);
+        HistorySurface.SizeChanged += (_, _) => SkinTheme.ApplySurface(HistoryBackdrop, HistoryBackdropShade, true);
+        SkinTheme.ApplySurface(HistoryBackdrop, HistoryBackdropShade, true);
         MaxHeight = SystemParameters.WorkArea.Height;
         MaxWidth = SystemParameters.WorkArea.Width;
         if (demo != null) { ConnectionLabel.Text = "示例数据 · 非真实历史"; ConnectionLabel.Foreground = Brush("#E4BA7C"); }
@@ -56,7 +57,7 @@ public partial class HistoryWindow : Window
         UiText.Apply(this);
     }
 
-    public void ApplySkin(bool paletteChanged = true) { HistoryAtmosphere.RefreshAppearance(); SkinTheme.ApplySurface(HistorySurface, HistoryPhotoShade, true); UpdateButtons(); if (paletteChanged) RenderChart(); }
+    public void ApplySkin(bool paletteChanged = true) { HistoryAtmosphere.RefreshAppearance(); SkinTheme.ApplySurface(HistoryBackdrop, HistoryBackdropShade, true); UpdateButtons(); if (paletteChanged) RenderChart(); }
 
     private static SolidColorBrush Brush(string color) => SkinTheme.Resolve(color);
     private async void OnHistoryChanged() { if (!closed) await Dispatcher.InvokeAsync(ReloadAsync).Task.Unwrap(); }
@@ -113,6 +114,7 @@ public partial class HistoryWindow : Window
             Footnote.Text = UiText.T("从首次成功采样开始计算增量；UTC 月重置分段累加，未采集时段不补造。", "Delta starts at the first successful sample. Observed changes are summed within UTC months; missing readings are not estimated.");
             CoverageLabel.ToolTip = PeriodLabel.Text;
         }
+        Footnote.Text += UiText.T("\n滚轮缩放 · 拖框选区间 · 点击固定采样 · 双击/右键恢复 · 虚线标记本机午夜与 UTC 月重置 · 橙圈为下降或异常跳增（非账单结论）", "\nWheel zoom · Drag to select · Click to pin sample · Double/right-click reset · Dashed local-midnight / UTC-reset boundaries · Orange rings mark drops or unusual jumps, not confirmed billing anomalies.");
         if (net < 0) Footnote.Text = "净变化为负：区间记录可能包含源页面累计值归零或金额修正，不代表负消费。  " + Footnote.Text;
         if (netReason != null) Footnote.Text = "净变化不可计算：" + netReason + "  " + Footnote.Text;
         UiText.Apply(this);

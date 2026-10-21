@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Icon = BrandIcon.Window;
+        BrandLogo.Source = BrandIcon.Window;
         MaxHeight = SystemParameters.WorkArea.Height;
         preferences = App.Demo || App.Smoke ? new Preferences() : Store.Read<Preferences>("preferences.json") ?? new Preferences();
         SettingsPolicy.Normalize(preferences);
@@ -51,11 +52,12 @@ public partial class MainWindow : Window
             closing = true;
             timer.Stop();
             StopAutomaticUpdates();
-            skinWindow?.Close();
             settingsWindow?.Close();
             skinSaveTimer.Stop();
             historyWindow?.Close();
             recordingWindow?.Close();
+            tasksWindow?.Close();
+            insightsWindow?.Close(); ReleaseHotkeys();
             if (history != null) history.Changed -= HistoryChanged;
             SavePreferences();
             monitor?.Dispose();
@@ -69,6 +71,7 @@ public partial class MainWindow : Window
     {
         PlaceOnScreen();
         InitializeHistory();
+        InitializeOperations();
         if(App.MiniAtStartup || App.StartSkin != null) SavePreferences();
         if (App.Demo)
         {
@@ -82,6 +85,8 @@ public partial class MainWindow : Window
                 }
             });
             SetStatus("demo");
+            if (App.AppearanceReviewPath != null) { await ReviewAppearanceAsync(App.AppearanceReviewPath); Close(); return; }
+            if (App.TasksReviewPath != null) { await ReviewTasksAsync(App.TasksReviewPath); Close(); return; }
             if (App.UpdateReviewInstaller != null)
             {
                 string setup = App.UpdateReviewInstaller;
@@ -106,12 +111,13 @@ public partial class MainWindow : Window
         }
         monitor = new SourceMonitor();
         monitor.Received += d => { if (closing) return; RecordHistory(d); RenderData(d); EvaluateWarning(true); if (!App.Smoke) Store.Write("consumption.json", d); };
-        monitor.Status += s => { if (!closing) SetStatus(s); };
+        monitor.Status += s => { if (!closing) { RecordSamplingEvent(s); SetStatus(s); } };
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         timer.Tick += Tick;
         timer.Start();
         StartAutomaticUpdates();
         await monitor.InitializeAsync();
+        if (!App.Smoke && !preferences.SetupGuideShown && data == null) { preferences.SetupGuideShown = true; SavePreferences(); OpenInsights(2); }
         if (App.OpenLogin && status == "login") monitor.ShowLogin();
         if (App.HistoryAtStartup && !App.Smoke) OpenHistory(this, new RoutedEventArgs());
         if (App.SkinsAtStartup && !App.Smoke) OpenSkins(this, new RoutedEventArgs());
@@ -126,10 +132,13 @@ public partial class MainWindow : Window
 
     private void PlaceOnScreen()
     {
-        var area = SystemParameters.WorkArea;
-        Left = preferences.Left >= 0 && preferences.Left < area.Right - 50 ? preferences.Left : area.Right - ActualWidth - 24;
-        Top = preferences.Top >= area.Top && preferences.Top < area.Bottom - 60 ? preferences.Top : area.Top + 64;
-        Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - ActualHeight));
+        bool saved = double.IsFinite(preferences.Left) && double.IsFinite(preferences.Top) && !(preferences.Left == -1 && preferences.Top == -1);
+        var monitors = System.Windows.Forms.Screen.AllScreens;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var monitor = saved ? monitors.FirstOrDefault(m => preferences.Left * dpi.DpiScaleX >= m.WorkingArea.Left - ActualWidth * dpi.DpiScaleX + 60 && preferences.Left * dpi.DpiScaleX < m.WorkingArea.Right - 50 && preferences.Top * dpi.DpiScaleY >= m.WorkingArea.Top && preferences.Top * dpi.DpiScaleY < m.WorkingArea.Bottom - 50) : null;
+        if (monitor != null) { Left = preferences.Left; Top = preferences.Top; }
+        else { var area = SystemParameters.WorkArea; Left = area.Right - ActualWidth - 24; Top = area.Top + 64; }
+        KeepOnCurrentScreen();
     }
 
     private static SolidColorBrush Brush(string color) => SkinTheme.Resolve(color);
@@ -138,6 +147,7 @@ public partial class MainWindow : Window
 
     private void RenderData(Consumption received)
     {
+        if (data == null || data.Total != received.Total) lastAmountChange = DateTimeOffset.UtcNow;
         data = received;
         RefreshNumericState();
         AccountsLabel.Text = $"{data.Accounts.Count} 个企业账户";
@@ -224,6 +234,8 @@ public partial class MainWindow : Window
 
     private void UpdateTimestamp()
     {
+        UpdateTrayTooltip();
+        RefreshSamplingHealth();
         RefreshNumericState();
         if (data == null) { UpdateLabel.Text = UiText.Translate("尚未同步"); return; }
         string time = data.FetchedAt.ToLocalTime().ToString(data.FetchedAt.LocalDateTime.Date == DateTime.Now.Date ? "HH:mm:ss" : "MM/dd HH:mm", Us);
@@ -236,6 +248,7 @@ public partial class MainWindow : Window
     private async void Tick(object? sender, EventArgs e)
     {
         CheckSystemZone();
+        EvaluateReminders();
         UpdateTimestamp();
         if (!closing && DateTimeOffset.Now - miniHistoryUpdated >= TimeSpan.FromMinutes(1)) { miniHistoryUpdated = DateTimeOffset.Now; await RefreshMiniHistoryAsync(); }
         if (paused || status == "syncing" || DateTimeOffset.Now < nextRefresh || closing) return;
@@ -257,8 +270,11 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
         var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
+        var taskHistory = new MenuItem { Header = UiText.T("任务计量 / 导出…", "Task measurements / Export…") }; taskHistory.Click += OpenTasks; menu.Items.Add(taskHistory);
         var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
         var about = new MenuItem { Header = UiText.T("关于…", "About…") }; about.Click += (_, _) => OpenAbout(); menu.Items.Add(about);
+        var insights = new MenuItem { Header = UiText.T("用量预估 / 区间对比…", "Usage forecast / Compare tasks…") }; insights.Click += (_, _) => OpenInsights(); menu.Items.Add(insights);
+        var diagnostic = new MenuItem { Header = UiText.T("连接诊断向导…", "Connection diagnostics…") }; diagnostic.Click += (_, _) => OpenInsights(2); menu.Items.Add(diagnostic);
         menu.Items.Add(BuildDisplayModeMenu());
         menu.Items.Add(BuildSkinMenu());
         var motion = new MenuItem { Header = "减少动态效果", IsCheckable = true, IsChecked = preferences.ReduceMotion };
@@ -273,7 +289,7 @@ public partial class MainWindow : Window
         }
         menu.Items.Add(refresh);
         var pause = new MenuItem { Header = "暂停自动刷新", IsCheckable = true, IsChecked = paused };
-        pause.Click += (_, _) => { paused = pause.IsChecked; StatusDot.Fill = Brush(paused ? "#C7A370" : status == "live" ? "#66D9B8" : "#C7A370"); if (paused) StatusLabel.Text = "自动刷新已暂停"; else { SetStatus(status); nextRefresh = DateTimeOffset.Now; } UpdateTimestamp(); };
+        pause.Click += (_, _) => ToggleSampling();
         menu.Items.Add(pause);
         var historyItem = new MenuItem { Header = "用量历史" }; historyItem.Click += OpenHistory; menu.Items.Add(historyItem);
         menu.Items.Add(new Separator());
@@ -303,13 +319,31 @@ public partial class MainWindow : Window
         tray.DoubleClick += (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); });
         var menu = BuildTrayMenu();
         tray.ContextMenuStrip = menu;
+        UpdateTrayTooltip();
     }
+
+    internal string TrayUsageText()
+    {
+        string amount = data == null ? UiText.T("尚未同步", "Not synced") : Money(data.Total);
+        string freshness = SamplingHealthText().Label;
+        string updated = data?.FetchedAt.ToLocalTime().ToString("MM/dd HH:mm") ?? "—";
+        string text = UiText.T($"Copilot Pulse · 本月 {amount}\n{freshness}\n最近成功 {updated}", $"Copilot Pulse · This month {amount}\n{freshness}\nLast success {updated}");
+        // NotifyIcon supports at most 127 UTF-16 code units, including line breaks.
+        int length = Math.Min(127, text.Length);
+        if (length > 0 && char.IsHighSurrogate(text[length - 1])) length--;
+        return text[..length];
+    }
+    private void UpdateTrayTooltip() { if (tray != null) tray.Text = TrayUsageText(); }
 
     private Forms.ContextMenuStrip BuildTrayMenu()
     {
         var menu = new Forms.ContextMenuStrip { Renderer = new DarkTrayRenderer(), BackColor = DarkTrayRenderer.Surface, ForeColor = DarkTrayRenderer.Text, Font = new System.Drawing.Font("Segoe UI", 9.5f), Padding = new Forms.Padding(4, 5, 4, 5), ShowImageMargin = false };
         menu.Items.Add(UiText.Translate("设置…"), null, (_, _) => Dispatcher.Invoke(OpenPreferences));
         menu.Items.Add(UiText.T("关于…", "About…"), null, (_, _) => Dispatcher.Invoke(OpenAbout));
+        menu.Items.Add(UiText.T("开始 / 结束任务", "Start / End task"), null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); ToggleRecordPoint(this, new RoutedEventArgs()); }));
+        menu.Items.Add(UiText.T("最近任务…", "Recent tasks…"), null, (_, _) => Dispatcher.Invoke(() => OpenTasks(this, new RoutedEventArgs())));
+        menu.Items.Add(UiText.T(paused ? "恢复采样" : "暂停采样", paused ? "Resume sampling" : "Pause sampling"), null, (_, _) => Dispatcher.Invoke(ToggleSampling));
+        menu.Items.Add(UiText.T("用量预估 / 诊断…", "Usage forecast / Diagnostics…"), null, (_, _) => Dispatcher.Invoke(() => OpenInsights()));
         menu.Items.Add("显示小组件", null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); }));
         menu.Items.Add("迷你数字模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("mini")));
         menu.Items.Add("展开完整模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("full")));

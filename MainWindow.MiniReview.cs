@@ -97,9 +97,9 @@ public partial class MainWindow
         preferences.ReduceMotion=true;SkinEdited();skinWindow.RefreshSelection();
         Check("reduced motion stops selected preview",!skinWindow.PreviewAnimationRunning);
         preferences.ReduceMotion=false;SkinEdited();skinWindow.RefreshSelection();
-        skinWindow.Hide();Check("hidden picker stops preview",!skinWindow.PreviewAnimationRunning);
-        skinWindow.Show();skinWindow.SetReviewEffects(1,1);skinWindow.PaintPreviewFrame(1.5);
-        await Task.Delay(100);CaptureControl(skinWindow,Path.Combine(directory,"picker.png"));skinWindow.Close();
+        settingsWindow!.Hide();Check("hidden picker stops preview",!skinWindow.PreviewAnimationRunning);
+        settingsWindow!.Show();skinWindow.SetReviewEffects(1,1);skinWindow.PaintPreviewFrame(1.5);
+        await Task.Delay(100);CaptureControl(settingsWindow!,Path.Combine(directory,"picker.png"));settingsWindow!.Close();
         await Task.Delay(1200); // Let the numeric update glow settle before comparing static frames.
         string Signature(string name)
         {

@@ -69,13 +69,13 @@ public partial class MainWindow
         await ReviewMenusAsync(Path.Combine(directory, "forest-menus"));
         OpenSkins(this, new RoutedEventArgs());
         await Task.Delay(180);
-        CaptureControl(skinWindow!, Path.Combine(directory, "skin-picker.png"));
-        skinWindow!.Close(); skinWindow = null;
+        CaptureControl(settingsWindow!, Path.Combine(directory, "skin-picker.png"));
+        settingsWindow!.Close(); settingsWindow = null;
         preferences.SkinId = "bayi"; SkinEdited();
         OpenSkins(this, new RoutedEventArgs());
         await Task.Delay(180);
-        CaptureControl(skinWindow!, Path.Combine(directory, "skin-picker-photo.png"));
-        skinWindow!.Close(); skinWindow = null;
+        CaptureControl(settingsWindow!, Path.Combine(directory, "skin-picker-photo.png"));
+        settingsWindow!.Close(); settingsWindow = null;
         historyWindow.Close(); historyWindow = null;
         File.WriteAllText(Path.Combine(directory, "checks.json"), JsonSerializer.Serialize(new { passed = checks.Count, checks }, Store.Json));
     }

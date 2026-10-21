@@ -49,6 +49,7 @@ public partial class MainWindow
 
     private static void CaptureControl(FrameworkElement control, string file)
     {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         control.UpdateLayout();
         var image = new RenderTargetBitmap((int)Math.Ceiling(control.ActualWidth * 2), (int)Math.Ceiling(control.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
         image.Render(control);
@@ -56,5 +57,6 @@ public partial class MainWindow
         encoder.Frames.Add(BitmapFrame.Create(image));
         using var output = File.Create(file);
         encoder.Save(output);
+        File.AppendAllText(Path.Combine(Path.GetDirectoryName(file)!, "capture-performance.txt"), $"{Path.GetFileName(file)}: {watch.Elapsed.TotalMilliseconds:0.0} ms\n");
     }
 }

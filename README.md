@@ -1,285 +1,164 @@
-﻿# Copilot Pulse
+# Copilot Pulse
 
 **把 Copilot 用量放在桌面上，让每一次增长都看得见。**
 
-Copilot Pulse 是一个 Windows 桌面小组件，把 Microsoft 内部 Copilot Consumption 页面的本月用量、企业明细和历史趋势集中到一张可随时查看的卡片中。可以展开查看账户明细，也可以收成一个带动态皮肤的迷你数字框。
+Windows 桌面小组件，读取 Microsoft 内部 Copilot Consumption 页面，显示月度用量、历史趋势和单次任务期间的观测增量。
 
-**v1.12.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套内置皮肤 + 自定义背景**
+**v1.13.0 · Windows 10 1809+ / Windows 11 · x64 · 22 套皮肤**
 
-[下载安装（个人仓库）](https://github.com/andylu1988/copilot-pulse/releases/latest) · [下载安装（EMU 仓库）](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [详细使用指南](docs/USER-GUIDE.zh-CN.md) · [版本记录](CHANGELOG.md)
+[下载安装](https://github.com/andylu1988/copilot-pulse/releases/latest) · [EMU 仓库](https://github.com/andylu_microsoft/copilot-pulse/releases/latest) · [使用指南](docs/USER-GUIDE.zh-CN.md) · [更新介绍](docs/RELEASE-v1.13.0.md) · [English](#english)
 
-![完整组件、今天趋势和迷你皮肤](docs/screenshots/overview.png)
+![矩阵皮肤下的紧凑面板](docs/screenshots/v1.13.0/release-compact-zh-CN.png)
 
-> 应用截图使用虚构账户、金额和历史，在隔离环境渲染。外观展示来自 v1.9.6；首次连接和 UTC 月份截图来自 v1.9.8。登录步骤中间栏是流程说明，不是 Microsoft 登录页截图。v1.12.0 新功能图使用已发布应用的矩阵皮肤与隔离示例数据。静态图展示动画的一帧。
+> 本页新版截图由实际应用在隔离环境中渲染，账户、任务和金额均为虚构示例；“示例 / 只读演示”是截图环境标记，正式菜单已移除演示入口。静态图片显示动画的一帧。不同图中的预估和警告可使用独立场景。
 
-## 它能做什么
+## v1.13.0 的变化
 
-| 功能 | 使用体验 |
+| 功能 | 可以怎么用 |
 | --- | --- |
-| 自动刷新 | 默认每 60 秒读取页面，可选 15/30/60/120/300/600 秒，支持手动刷新和暂停。 |
-| 用量总览 | 显示本月累计金额、企业明细、用量比例和 Monthly limit。 |
-| 三种模式 | 完整模式看明细，紧凑模式看金额与趋势，迷你模式突出一个数字。 |
-| 历史趋势 | 今天、24 小时、7 天、本月、指定月份；支持总用量与单个企业。 |
-| 两种图表 | 累计折线看走势，变化柱状图看相邻采样变化，悬停查看详细读数。 |
-| 区间净增长 | 完整与紧凑主卡片在小曲线下显示所选区间的总用量净增长，一起刷新。 |
-| 记录区间增量 | 任务开始前增加记录点，观察单次任务期间的用量变化；独立采样与曲线，记录点和采样重启保留。 |
-| 换肤与动效 | 矩阵雨、液晶、赛博朋克、雷达、机甲、辉光管、电子墨水等，强度与速度可调。 |
-| 自定义背景 | 导入本机 PNG/JPG/BMP，调整遮罩深浅和裁切焦点。 |
-| 桌面常驻 | 拖动摆放、切换置顶、收起到托盘，隐藏后仍可继续采集。 |
-| 在线更新 | 一键完成下载、校验、安装和客户端重启；每小时检查正式版本，主界面“迷你”左侧显示新版本提醒；未点击满 48 小时自动安装并重启。默认使用个人公开仓库，无需登录 GitHub。 |
-| 数字字体 | 跟随皮肤或选择六种字体，完整 / 紧凑 / 迷你模式立即生效。 |
-| 阈值进度 | 主金额下持续显示金额阈值进度或最高账户配额百分比，低于警告线也能看到。 |
-| 本机历史 | 按月保存，重启后继续查看；升级与卸载保留历史和设置。 |
+| 命名任务计量 | 给记录区间加任务备注，保存起止时间、增量、采样记录，观察一次修复、代码审查或方案准备期间的花费。 |
+| 采样健康 | 查看最近成功时间、失败、重试与估计缺失采样，区分真实用量变化与数据延迟。 |
+| 任务对比与导出 | 并排比较两个任务的增量、持续时间、单次最大变化和采样数，导出 PNG、CSV / JSON 或复制摘要。 |
+| 用量预估 | 优先显示预计月末累计量、是否会在重置前耗尽，再看进度与统计依据。 |
+| 提醒升级 | 持久化冷却、免打扰、完全静默、重置前提醒、采样中断与恢复提醒。 |
+| 快捷操作 | 可选全局快捷键、托盘任务操作、暂停采样、悬停用量提示、多显示器窗口位置恢复。 |
+| 图表交互 | 悬停、固定采样提示、滚轮缩放、框选时间、重置视图，以及午夜、UTC 月重置和异常变化标记。 |
+| 连接诊断 | 检查时区、浏览器会话、登录、采样与存储，导出不含账户和金额的诊断报告。 |
+| 外观整理 | 四个等大毛玻璃按钮、清晰圆角图标、宽版分类设置；换肤合并至设置，主界面仍可直接进入。 |
+| 切换性能 | 矩阵动画合成为单张帧图，复用毛玻璃背景，减少打开与关闭窗口时的渲染等待。 |
 
-## 截图一览
+## 用记录区间观察单次任务花费
 
-### 从完整卡片到迷你数字框
+1. 点击 **开始任务计量**，填写“修复登录 Bug”等任务备注。
+2. **等待第一个成功采样**，它是零基线；然后开始工作。
+3. 观察主界面的“记录区间增量”，点击卡片查看曲线和采样健康。
+4. 结束工作后等待源页面更新，再点击 **结束并保存**。
+5. 在 **任务记录 / 导出** 回看、重命名、复制摘要或导出；在 **用量预估 → 区间对比** 比较两次任务。
 
-<table>
-<tr><th>完整：企业明细与总览</th><th>紧凑：金额与区间净增长</th></tr>
-<tr><td><img src="docs/screenshots/widget-full.png" width="350" alt="完整模式，示例数据"></td><td valign="top"><img src="docs/screenshots/widget-compact.png" width="350" alt="紧凑模式，示例数据"></td></tr>
-</table>
+这是页面读数的观测增量，不是精确任务账单。源页面延迟和同时运行的工作会影响结果；缺失采样不会被伪造补齐。任务和记录重启后保留。
 
-![八种迷你皮肤，均为示例数据](docs/screenshots/mini-skins.png)
+![任务记录与采样健康](docs/screenshots/v1.13.0/release-tasks-zh-CN.png)
 
-### 看清今天的变化
+**迷你显示任务增量是手动选项**：点击主界面“迷你区间增量”开启，再切换迷你模式。默认仍显示月度累计；没有有效任务读数时显示 `—`。从迷你恢复时，记住之前的紧凑 / 完整模式。
 
-“今天”从本机时间凌晨 00:00 到当前时间。曲线金额仍是采样时的本月累计读数；当天已记录的增长看“区间净变化”。示例最后读数 **$1,234.56**，今天净变化 **+$74.75**。
-
-![今天累计趋势，示例数据](docs/screenshots/history-today.png)
-
-切换“单次变化”可以发现相邻连续读数在哪些时段增长较快。
-
-![今天变化柱状图，示例数据](docs/screenshots/history-changes.png)
-
-## 下载与首次使用
-
-1. 从 [最新版本](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.12.0-x64.exe`。
-2. 双击完成当前用户安装，可选择创建桌面快捷方式。默认位置为 `%LOCALAPPDATA%\Programs\CopilotPulse`。
-3. 启动后组件尝试 Windows 主账户 SSO。如需登录，点击“连接 Microsoft 账户”，完成账户选择与验证。
-4. 确认账户和月份，等待读取成功。点击“历史趋势”打开图表，点击“换肤”选择外观。
-
-![首次使用：点击连接、验证自己的账户、等待同步成功](docs/screenshots/onboarding.png)
-
-**步骤 1：点击连接。** 没有数据时点击“连接 Microsoft 账户 ↗”；也可打开菜单 →“Windows 账户登录 / 数据源”。
-
-**步骤 2：完成官方验证。** 在组件打开的 Microsoft 登录与数据源窗口核对自己的 corp 账户，按组织提示完成 MFA。支持 SSO 且已同步时可跳过。
-
-**步骤 3：确认数据进入组件。** Consumption 页面加载后会自动读取。主卡片显示“已同步”、总金额和企业明细后即完成；首次历史需积累至少两笔读数才能计算净增长。
-
-安装通常无需管理员权限，自带 .NET 8 Desktop Runtime；缺少 WebView2 时运行微软官方引导程序，需要联网。安装包目前未签名，请遵循组织的软件安装策略。
-
-**个人仓库公开，安装包可直接下载；EMU 镜像保持私有。** 每位使用者还需要具有 [内部 Consumption 页面](https://copilot.github.microsoft.com/?section=limits&tab=consumption) 的访问权限及相应网络环境。
-
-## 按配额月份查看历史
-
-配额按 **UTC 月份**划分，中国时区月初重置时间为 **1 日 08:00**。“今天”仍按本机自然日计算。点击“月份 ▾”选择已有记录的月份，替代原来的“全部”。主卡片净增长随所选月份一起刷新。
-
-![UTC 本月趋势与月份选择入口，示例数据](docs/screenshots/history-month-utc.png)
-
-## 记录区间增量（v1.12.0）
-
-在主界面点击 **增加记录点**，从点击时刻开始记录。历史趋势下方出现独立的 **记录区间增量** 卡片，随成功刷新更新；点击卡片可打开独立图表，查看总用量或单个账户的累计增量、每次采样变化。普通历史趋势的时间范围不会改变这个记录区间。
-
-首个成功读数作为零基线；取得可比较的新读数后显示增量。尚无有效读数时显示 `—`。记录点和采样保存在本机，退出、重启和升级后继续。点击 **删除记录点** 清除本次计量起点，保留已有历史；再次添加即可开始新一轮计量。
-
-也可在设置中输入本机日期时间 `YYYY-MM-DD HH:mm` 指定起点。应用按系统时区换算并保存 UTC 时间；系统时区改变后只改变显示时间。跨 UTC 配额月份时，累加各月实际采样内的变化，不推算漏采时段；缺少整月数据或账户口径无法比较时显示原因。应用未运行期间不会补造采样。
-
-迷你模式双击或点击展开时，会恢复上次的紧凑或完整模式；该选择重启后保留。
-
-### 用来观察单次任务的花费
-
-“记录区间增量”适合观察一次代码生成、排查或其他 Copilot 任务前后的用量变化：
-
-1. 任务开始前点击 **增加记录点**。
-2. **等首个成功采样建立零基线后，再开始任务**。
-3. 任务结束后，等待源页面反映新增用量，并让组件成功刷新。
-4. 查看记录区间增量，点击卡片查看累计曲线或单次采样变化。需要重新观察时，删除记录点后再添加；原有历史保留。
-
-这是源页面在所记录时间段内的 **INTERNAL USD 用量变化**。源页面可能延迟更新；同一期间其他任务或账户的消费也可能计入，应尽量避免并行用量，必要时选择对应账户查看。它不能精确归因到某次 API 请求，也不是单任务账单。未采集时段不会补造记录。
-
-![矩阵皮肤：增加记录点，观察单次任务用量；全部为示例数据](docs/screenshots/record-point-matrix.png)
-
-![矩阵皮肤：独立记录区间增量曲线，示例数据](docs/screenshots/recorded-delta-matrix.png)
-
-示例本月累计 **$1,234.56**，记录点首个读数 **$623.51**，记录后增量 **+$611.05**，共 50 次采样。这个示例覆盖多天，用于展示计算口径，不代表一次真实任务的花费。
-
-![矩阵皮肤：迷你展开恢复原布局，示例数据](docs/screenshots/mini-restore-matrix.png)
-
-## 偏好设置（v1.9.9）
-
-点击主卡片 **⋯ → 设置…**，或右键迷你框 / 托盘图标 → 设置，打开独立设置窗口。选择立即生效并保存；阈值输入后点击“应用”或按 Enter。
-
-| 设置 | 可选内容 |
+| 月度累计 | 当前任务增量 |
 | --- | --- |
-| 语言 | 简体中文 / English，主卡片、历史、换肤与菜单同步切换。 |
-| 数据刷新 | 15、30、60、120、300、600 秒；默认 60 秒。 |
-| 动画帧率 | 10、15、20、30、60 FPS；默认 20 FPS，也可减少动态效果。 |
-| 用量警告 | 默认关闭；开启后显示卡片提示，并在成功同步时发出 Windows 通知。 |
-| 警告阈值 | 各账户配额百分比 1–100%，或本月合计金额 $0.01–$1,000,000,000。 |
-| 时间与链接 | 显示 Windows 系统时区、下次 UTC 月初重置对应的本机时间，提供用量网页和文档入口。 |
+| ![迷你月度累计](docs/screenshots/v1.13.0/release-mini-month-zh-CN.png) | ![迷你任务增量](docs/screenshots/v1.13.0/release-mini-task-zh-CN.png) |
 
-未提供具体数字限额的账户不计算百分比警告，可使用金额警告。本次运行中，每个账户在相同 UTC 配额月份和阈值下提醒一次；重启或修改阈值后可再次提醒。系统通知是否显示受 Windows 通知设置影响。
+[任务计量与数据口径](docs/task-measurements.md)
 
-### 阈值进度与警告通知
+## 用量预估与区间对比
 
-在 **⋯ → 设置… → 用量警告** 中启用警告，选择“本月合计金额”或“各账户配额百分比”，填写阈值后点击“应用”或按 Enter。警告默认关闭。
+按近一小时、过去 24 小时或本月记录外推，突出 **预计月末累计量** 和 **按此速度是否会耗尽**。进度条下方说明样本覆盖、速度和预计重置时间。
 
-**阈值进度：未达到警告线也能看到。** 金额模式按 `本月总额 ÷ 金额阈值 × 100%` 计算。下图虚构用量 **$1,234.56**，阈值 **$2,000.00**，进度 **61.73%**，因此没有警告条。配额模式显示最高账户的配额使用百分比；没有具体数字配额时显示不可计算。
+![用量预估：高风险示例](docs/screenshots/v1.13.0/quota-risk-zh-CN.png)
 
-<img src="docs/screenshots/threshold-progress-matrix.png" width="408" alt="紧凑矩阵面板阈值进度61.73%，模拟数据">
+配额以 **UTC 月初 00:00** 重置，界面换算为 Windows 当前系统时区。“今天”按本机午夜计算；“本月 / 指定月份”按 UTC 配额月份计算。至少需要两个可比较读数且间隔不少于一分钟。页面只有 `Standard` 而没有数值上限时，只按页面百分比做明确标注的近似外推，不假定固定金额上限；百分比低于 0.1% 时不外推。读数过旧、来自上月或未来时暂停预测。预测随工作负载变化，不代表实际结算。
 
-**达到阈值后的界面警告与通知。** 下图把金额阈值设为 **$1,000.00**，同一用量达到 **123.46%**，超过阈值 **$234.56**。完整及紧凑面板在金额附近显示高对比琥珀色警告条、图标和文字；迷你模式显示带深色底的琥珀色警告标识及进度。
+![两个任务的观测增量对比](docs/screenshots/v1.13.0/release-compare-zh-CN.png)
 
-![紧凑矩阵面板与 Windows 用量警告通知示意，模拟数据](docs/screenshots/usage-warning-notification.png)
+## 历史趋势与阈值警告
 
-成功同步且达到阈值时发出 Windows 通知；本次运行中相同账户、UTC 配额月份与阈值只提醒一次，重启或修改阈值后可再次提醒。系统通知是否出现受 Windows 通知设置影响。降低用量至阈值以下或关闭警告后，界面警告消失，进度继续显示。
+支持今天、24 小时、7 天、本月及已有月份；查看累计折线或相邻变化。悬停查看时间和金额，点击固定提示；滚轮缩放，拖动框选，双击或右键恢复。自动刷新保留缩放范围。历史与记录窗口保持实色背景，便于读图。
 
-*以上为 v1.11.1 实际控件的示例截图，金额、账户与趋势均为虚构数据。示例本月从 UTC 月初 $0 增长到 $1,234.56，因此本月净增长也为 +$1,234.56；真实历史只计算已采集区间，不补造月初数据。通知卡片为 Windows 通知示意，实际样式取决于系统。*
+![历史趋势与采样提示](docs/screenshots/v1.13.0/release-hover-zh-CN.png)
 
-窗口背景、标题、普通文字和金额区域均可拖动；按钮、输入框、滑块和图表继续响应原有操作。Windows 更改时区后，应用会在一分钟内重新读取；“今天”按本机午夜，配额月份按 UTC 00:00。
+金额阈值进度持续显示，即使未触发警告也能查看。示例月度累计 **$1,234.56**，阈值 **$2,000** 时显示 **61.73%**；阈值改为 **$1,000** 时显示 **123.46%**，超出 **$234.56**。阈值是用户设置的提醒线，不会改变源站配额。
 
-<table><tr><th>中文</th><th>English</th></tr><tr><td><img src="docs/screenshots/settings-zh.png" width="380" alt="中文偏好设置"></td><td><img src="docs/screenshots/settings-en.png" width="380" alt="English preferences"></td></tr></table>
+![超过金额阈值时的醒目警告](docs/screenshots/v1.13.0/release-warning-zh-CN.png)
 
-## 日常操作
+![Windows 警告通知示意](docs/screenshots/usage-warning-notification.png)
 
-| 想做什么 | 怎么操作 |
-| --- | --- |
-| 只显示数字 | 主窗口“迷你”，或设置 / 换肤中的“迷你数字”。 |
-| 恢复卡片 | 双击迷你框，恢复上次紧凑或完整模式；右键可打开设置。 |
-| 开始 / 删除计量 | 点击“增加记录点” / “删除记录点”；点击记录区间卡片查看独立图表。 |
-| 看当天增长 | 打开历史选择“今天”；主卡片净增长同步改为今天。 |
-| 看单个企业 | 历史窗口左上角选择企业；主卡片净增长始终按总用量计算。 |
-| 改刷新频率 | ⋯ → 设置 → 数据刷新频率；底部刷新按钮立即读取。 |
-| 换外观 | 点击“换肤”，选择即生效，主卡片与历史窗口同步切换。 |
-| 降低动画 | 开启“减少动态效果”，或在换肤界面关闭动态效果。 |
-| 收起 / 退出 | 最小化收起到托盘，双击托盘图标恢复；托盘菜单退出。 |
+上方系统通知图为早期版本的展示示意；实际呈现受 Windows 通知与免打扰设置影响。应用内警告在静音时仍显示。设置中可配置一次性 / 每小时 / 每四小时 / 每日提醒、安静时段、即将重置和采样中断 / 恢复通知。
 
-安装、登录、趋势计算、全部皮肤、备份和问题处理见 [详细使用指南](docs/USER-GUIDE.zh-CN.md)。
+## 设置与换肤
 
-## 数据来源、账户与隐私
+设置改为更宽的分类布局：常规、外观、皮肤、计量、警告、通知、快捷操作和更新。右上角关闭按钮与底部完成操作保持固定。主界面“换肤”直接进入同一设置窗口的皮肤页。支持矩阵、液晶、赛博朋克等皮肤、自定义背景、数字字体、动画强度与帧率，以及中文 / English。
 
-这是非官方工具，读取内部页面展示的 GitHub Copilot 企业消费数据，单位为 **INTERNAL USD**。它不是通用的个人订阅统计工具，也不统计所有 AI 产品开销。**Monthly limit 是页面的使用上限，不代表个人预算；以源网站为核对依据。** 刷新频率不等于网站数据更新速度。
+![皮肤已合并到分类设置](docs/screenshots/v1.13.0/release-skins-zh-CN.png)
 
-每位用户使用自己的账户。WebView2 尝试 Windows 主账户 SSO，但现有组件会话、多账户、MFA 或条件访问可能要求交互登录。组件不导入系统浏览器 Cookie，不读取或导出 PRT，也不保存用户输入的密码；WebView2 正常管理本机登录会话。
+![提醒与免打扰设置](docs/screenshots/v1.13.0/settings-notifications-zh-CN.png)
 
-用量、历史、设置与自定义图片保存在：
+## 安装、登录与诊断
 
-```text
-%USERPROFILE%\Documents\Codex\CopilotPulse-data
-```
+1. 从 [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest) 下载 `CopilotPulse-Setup-1.13.0-x64.exe`，按向导安装到当前用户。
+2. 点击 **连接 Microsoft 账户**；在官方登录窗口选择自己的公司账户，按组织要求完成验证。
+3. 等待 Consumption 页面加载和第一次成功同步；有至少两笔有效读数后才能计算增长。
+4. 遇到数据延迟，在菜单打开 **连接诊断**，检查登录与采样状态，必要时“立即采样”。
 
-历史为 `history\YYYY-MM.jsonl`。这些文件**未额外加密**，可能包含企业名称、登录名、金额和时间。如果目录被系统同步或备份，文件也可能被同步或备份，请按组织要求管理。
+![首次连接操作步骤](docs/screenshots/onboarding.png)
 
-应用不会主动把采集用量上传到额外服务；登录和读取页面仍需访问源站与认证服务。运行时不调用图像生成 API。安装包不含作者账户会话、真实用量、历史或 API Key。分享安装包即可，不要打包自己的数据目录或 WebView2 登录目录。
+上图中间栏为验证流程说明，并非 Microsoft 登录页截图。WebView2 尝试 Windows 主账户 SSO，但不保证直接复用系统浏览器会话或 PRT。每位用户使用自己的身份与站点权限，安装包不包含作者账户、会话或密钥。安装器目前没有发布者代码签名；请核对发布来源与 SHA-256。
 
-## 常见问题
+![连接诊断](docs/screenshots/v1.13.0/release-diagnostics-zh-CN.png)
 
-| 现象 | 建议 |
-| --- | --- |
-| 未显示金额 | 在“Windows 账户登录 / 数据源”中完成登录，确认有源站权限。 |
-| 浏览器正常，组件未登录 | 浏览器与 WebView2 会话分别管理，请在组件中登录。 |
-| 刷新失败后金额不变 | 组件保留并标记上次成功读数，检查网络、会话与源页面后手动刷新。 |
-| 今天没有曲线 | 今天尚无有效采样；无法回补应用未运行的历史。 |
-| 净增长显示 `—` | 可能少于两个可比较读数、跨月重置或非零金额企业加入、移出；界面显示具体原因。零金额企业增减不影响计算。 |
-| 重启看不到旧记录 | 先用“月份 ▾”选择旧月份，用“历史文件夹”检查记录和目录权限。 |
-| 动画太强 | 降低强度 / 速度，或开启“减少动态效果”。 |
+## 数据、更新与开发
 
-### 版本信息与自动更新
+设置、历史、任务与采样日志保存在本机应用数据目录。当前默认位置为 `%USERPROFILE%\Documents\Codex\CopilotPulse-data`，历史按 UTC 月份分文件；旧安装会迁移数据。升级 / 卸载保留数据。文件未加密，备份前先正常退出应用。
 
-打开 **⋯ → 关于…** 查看项目信息、本地版本、云端最新正式版本、检查时间和项目链接。打开时自动检查，也可以手动刷新；失败时明确显示无法检查，不会把未知版本当作最新。
+CSV / JSON 与任务图片默认匿名化，移除账户信息和任务名称，**仍包含时间、金额和任务 ID**；分享前检查。匿名诊断报告另有严格字段限制，不含账户、金额、令牌、Cookie、完整 URL 或网页正文。
 
-客户端每小时检查更新，新版本按钮显示在“迷你”左侧。未打开提醒满 48 小时后，自动下载校验、保存退出、安装并重新打开。打开在线更新窗口会取消该版本的自动安装，可手动选择安装。关机或退出期间不检查，下一次运行时继续。详情见 [自动更新说明](docs/automatic-updates.md)。
+每小时检查公开仓库正式版本；发现新版本后，“迷你”左侧显示提醒。一键下载、SHA-256 校验、安装并重启客户端，Windows 无需重启。新版本提醒未打开满 48 小时后自动安装；打开提醒会取消该次无人值守倒计时。“关于”显示本地及云端版本。
 
-## 从源码构建
-
-需要 Windows、.NET 8 SDK；解析器测试需要 Node.js。
+开发需要 .NET 8 SDK、Windows 和 WebView2 Runtime：
 
 ```powershell
-dotnet publish .\CopilotPulse.csproj -c Release -r win-x64 --self-contained true -o .\publish
-node --test .\tests\parser.test.cjs
-dotnet run --project .\tests\SsoPolicy\SsoPolicy.csproj
-dotnet run --project .\tests\HistoryTests\HistoryTests.csproj -- .\work\history-tests
+dotnet build -c Release
+dotnet run --project tests/HistoryTests/HistoryTests.csproj -c Release -- ..\test-results
 ```
 
-安装包需要 [Inno Setup](https://jrsoftware.org/isinfo.php)（已验证 6.7.3）与 [Microsoft WebView2 官方引导程序](https://go.microsoft.com/fwlink/p/?LinkId=2124703)。脚本检查引导程序的 Microsoft 签名及安装内容是否混入个人数据。
+本次本机验证包含 224 项自动检查、隔离安装 / 自动更新验证，以及两轮各 48 次矩阵窗口切换，最大 UI 调度间隔约 1.2 秒和 1.0 秒。这是本机测量结果，不保证所有设备相同。
 
-```powershell
-.\installer\Build-Installer.ps1 `
-  -CompilerPath 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' `
-  -WebViewBootstrapper '.\MicrosoftEdgeWebview2Setup.exe' `
-  -OutputDirectory '.\dist' `
-  -BuildDirectory '.\work\installer-build'
-```
-
-`publish\CopilotPulse.exe --demo` 可预览外观，不覆盖真实缓存。本页截图另用隔离文档示例生成，见 [截图说明](docs/screenshots/README.md)。页面布局变化可能需要更新 `extract-consumption.js`。
-
-## 参考与素材
-
-介绍结构参考 [mcaps-microsoft/copilot-usage-monitor](https://github.com/mcaps-microsoft/copilot-usage-monitor) 的功能、截图、安装、使用与隐私说明组织方式。两个项目实现、功能和本机保存策略不同，该链接仅作介绍结构参考。
-
-版本见 [CHANGELOG.md](CHANGELOG.md)，素材见 [矩阵背景](Assets/MATRIX-ART.md) 与 [当前应用图标](Assets/SELECTED-DESKTOP-ICON.md)。
-
-点击 **⋯ → 在线更新 → 一键更新并重启**，自动下载、校验、安装并重新打开客户端。当前版本来自实际运行程序，安装后会核对目标版本；已是最新版则不重复下载。
+本工具为非官方项目，数据以源站为准。产品介绍参考 [copilot-usage-monitor](https://github.com/mcaps-microsoft/copilot-usage-monitor)；矩阵美术来源见 [素材说明](Assets/MATRIX-ART.md)。
 
 ## English
 
-**Copilot Pulse puts your Copilot usage on the Windows desktop.** This unofficial widget reads the Microsoft internal Copilot Consumption page, with automatic refresh, enterprise details, local history, five time ranges, cumulative and change charts, three display modes, 22 built-in skins, and custom backgrounds.
+**Copilot usage, visible on your Windows desktop.** Copilot Pulse reads the internal Microsoft Copilot Consumption page and shows monthly totals, history and observed usage during a named task. [Download](https://github.com/andylu1988/copilot-pulse/releases/latest) · [Task guide](docs/task-measurements.md) · [Forecast and operations](docs/usage-insights.md).
 
-### Recorded period delta in v1.12.0
+![Compact Matrix widget](docs/screenshots/v1.13.0/release-compact-en.png)
 
-Click **Add record point** on the main widget to start measuring from that moment. A separate **Recorded period delta** card appears below history and updates after successful refreshes. Click it for a dedicated chart with total or per-account cumulative delta and individual sample changes. Changing the regular history range does not change this recording period.
+Screenshots use fictional accounts, amounts and tasks in an isolated review environment. Demo labels identify screenshot data; the public demo menu has been removed. Forecast and warning images may use separate scenarios.
 
-The first successful reading starts at zero; comparable later readings produce a delta. Until a valid sample exists, the card shows `—`. The record point and samples survive restarts and upgrades. **Delete record point** removes the measurement start while preserving history. Add another point to start a new measurement.
+### Measure and compare tasks
 
-Settings also accepts a local start time in `YYYY-MM-DD HH:mm` format. It is converted using the Windows timezone and stored as an absolute UTC time. Across UTC quota months, only observed within-month changes are summed; missing intervals are not estimated. Missing whole months or incompatible account sets are reported as unavailable. No samples are fabricated while the app is closed.
+Choose **Start task measurement**, enter a note, and wait for the first successful sample before starting work. Watch the recorded-period delta, then wait for source data to catch up and choose **Finish and save**. **Task records / Export** keeps names, timestamps, deltas, samples and sampling health across restarts. Compare two saved tasks under **Usage forecast → Task comparison**, export PNG / CSV / JSON, or copy a summary.
 
-Expanding or double-clicking mini mode restores the previous compact or full layout, including after restart.
+![Saved tasks and sampling health](docs/screenshots/v1.13.0/release-tasks-en.png)
 
-Use **⋯ → Online updates → Update and restart** for a single-click check, download, verification, silent installation and client restart. The local version comes from the running assembly, and setup verifies the installed target version. Up-to-date clients do not download again.
+This helps observe the cost of a single task, but is not an exact task bill. Source lag and concurrent work affect attribution. Missing samples are not invented. Mini task delta is an explicit main-panel option; monthly total remains the default. Returning from mini restores the previous compact or full layout.
 
-Download the per-user x64 installer from [Releases](https://github.com/andylu1988/copilot-pulse/releases/latest). It includes the .NET runtime and installs WebView2 if needed. The installer is currently unsigned. The personal repository is public. Access to the internal source site is required. Windows SSO is attempted, but account selection, MFA, or organizational policy may require interactive sign-in. Every user signs in with their own account.
+### Forecasts and interactive history
 
-All screenshots use **synthetic accounts and usage**. Widget captures use actual application controls; the warning notification card is an explicitly labelled Windows notification illustration. History is stored **unencrypted locally** and is not proactively uploaded to an additional service by this application. Authentication and source-page requests still need network access. No author credentials, API keys or usage history are included in the installer.
-### Observe the cost of a single task
+Forecasts emphasize **projected month-end usage**, **whether quota may run out before reset**, then progress and sampling statistics. Select the last hour, last 24 hours or observed current month as the rate basis. Two comparable samples spanning at least one minute are required. For Standard without a numeric cap, explicitly approximate percentage projections use the page ratio; percentages below 0.1% are not extrapolated. Stale, previous-month or future readings pause predictions.
 
-Use **Recorded period delta** to observe usage before and after a code-generation, troubleshooting or other Copilot task:
+![Quota risk forecast](docs/screenshots/v1.13.0/quota-risk-en.png)
 
-1. Click **Add record point** before the task.
-2. **Wait for the first successful sample to establish the zero baseline before starting**.
-3. After the task, wait for the source page to reflect usage and for a successful widget refresh.
-4. Inspect the delta card and its cumulative curve or individual sample changes. Delete and add a new point for another observation; existing history is retained.
+Quota resets at **00:00 UTC on the first of the month**, displayed in the Windows timezone. Today starts at local midnight; quota-month ranges follow UTC. Hover or pin chart points, wheel to zoom, drag to select and double-click or right-click to reset. Refresh retains zoom. Charts mark local midnight, UTC reset and unusual changes. History windows retain opaque backgrounds for readability.
 
-This measures observed **INTERNAL USD usage changes during the recorded period**. Source updates may lag, and concurrent tasks or accounts can contribute. Avoid unrelated parallel usage and select the relevant account when appropriate. It is not exact API-level attribution or a per-task bill. Unobserved periods are never fabricated.
+![Interactive history](docs/screenshots/v1.13.0/release-hover-en.png)
 
-![Matrix skin: record-point workflow with synthetic data](docs/screenshots/record-point-matrix-en.png)
+### Thresholds and notifications
 
-![Matrix skin: dedicated recorded-delta chart with synthetic data](docs/screenshots/recorded-delta-matrix-en.png)
+Threshold progress is always visible. With fictional usage of **$1,234.56**, a **$2,000** threshold shows **61.73%**; a **$1,000** threshold shows **123.46%**, exceeding it by **$234.56**. A personal alert threshold does not change the service quota.
 
-The example monthly total is **$1,234.56**. The first recorded reading is **$623.51**, producing **+$611.05** across 50 samples. This multi-day illustration explains the calculation; it is not the cost of a real single task.
+![Threshold warning in the widget](docs/screenshots/v1.13.0/release-warning-en.png)
 
-![Matrix skin: mini restores the previous layout, synthetic data](docs/screenshots/mini-restore-matrix-en.png)
+![Windows warning notification illustration](docs/screenshots/usage-warning-notification-en.png)
 
-### Preferences in v1.9.9
+The notification illustration is from an earlier version; actual delivery depends on Windows settings. Widget warnings remain visible when notifications are muted. Configure persistent cooldowns, local quiet hours, silent mode, reset reminders, sampling interruptions and recovery messages.
 
-Open **⋯ → Settings…**, or right-click the mini widget / tray icon. Choose Chinese or English, a 15/30/60/120/300/600-second refresh interval, and 10/15/20/30/60 FPS. Settings apply immediately and persist locally. Thresholds require Apply or Enter.
+### Settings, shortcuts and connection
 
-Warnings are disabled by default. Choose a per-account numeric quota percentage (1–100%) or monthly total amount ($0.01–$1,000,000,000). Unknown quotas do not trigger percentage warnings. During each app session, each account/threshold warns once per UTC quota month; restarting permits another notification. Windows notification settings apply.
+A wider categorized Settings window includes the skin gallery, language, digit fonts, animation frame rate, warnings, notifications, shortcuts and updates. Close and Done stay visible; the main Skin shortcut opens that settings page directly. Four equally sized glass buttons and a crisp rounded app badge unify the main panel. Matrix animation now uses one composited frame and shared glass surfaces to reduce rendering stalls.
 
-### Threshold progress and usage warnings
+![Skin settings](docs/screenshots/v1.13.0/release-skins-en.png)
 
-Open **⋯ → Settings… → Usage warnings**, enable warnings, select the monthly total amount or per-account quota percentage, enter a threshold, and click **Apply** or press Enter. Warnings are off by default.
+Opt-in global shortcuts: **Ctrl+Alt+T** task start/finish, **Ctrl+Alt+M** mini, **Ctrl+Alt+R** refresh and **Ctrl+Alt+H** recent task. Tray actions support sampling pause/resume and show usage on hover. Window placement handles multiple monitors. Connection diagnostics checks timezone, session, login, sampling, storage and shortcut registration.
 
-**Progress stays visible below the warning threshold.** Amount mode uses `monthly total / amount threshold × 100%`. In this synthetic example, **$1,234.56 / $2,000.00 = 61.73%**, so no warning banner appears. Quota mode shows the highest per-account quota percentage. An unknown numeric quota is explicitly shown as unavailable.
+Install the x64 setup, click **Connect Microsoft account**, authenticate with your own corporate account and wait for synchronization. WebView2 attempts Windows-account SSO; sharing a system-browser session or PRT is not guaranteed. Installation does not grant access to the internal source. No author credentials are distributed. The installer is currently unsigned; check its origin and SHA-256.
 
-<img src="docs/screenshots/threshold-progress-matrix-en.png" width="408" alt="Compact Matrix threshold progress at 61.73%, synthetic data">
+Local unencrypted files retain settings, history, tasks and refresh events across upgrades / uninstall. Default: `%USERPROFILE%\Documents\Codex\CopilotPulse-data`. Anonymous exports remove account details and task names but retain timestamps, amounts and task IDs; review before sharing. Diagnostic exports exclude accounts, amounts, tokens, cookies, full URLs and page bodies.
 
-**When the threshold is reached.** With a **$1,000.00** amount threshold, the same usage reaches **123.46%**, or **$234.56** above the threshold. Full and compact widgets show an amber banner, warning icon and clear text near the amount. Mini mode shows an amber warning badge and progress on a dark background.
+Updates are checked hourly using public GitHub releases. The main-panel badge offers download, checksum verification, installation and app restart in one action. Unopened reminders trigger automatic installation after 48 hours; opening a reminder cancels that unattended countdown. Windows itself does not restart. About shows local and latest versions.
 
-![Compact Matrix warning and illustrated Windows notification, synthetic data](docs/screenshots/usage-warning-notification-en.png)
-
-A successful sync at or above the threshold triggers a Windows notification. Each account/UTC quota month/threshold notifies once per app session; restarting or changing the threshold permits another notification. Windows notification settings apply. The warning clears when usage falls below the threshold or warnings are disabled; progress remains visible.
-
-*These v1.11.1 captures use actual controls with synthetic accounts, amounts and history. The example starts at $0 at UTC month start and ends at $1,234.56, giving +$1,234.56 monthly net growth. Real history compares collected readings and does not invent a month-start baseline. The notification card is an illustration; actual Windows appearance varies.*
-
-Windows timezone and the next UTC month reset in local time are displayed in Preferences. Today starts at local midnight; monthly quota periods start at UTC midnight. Drag ordinary text, amounts or background areas to move windows. Links open the usage page and guides in your default browser.
+This is an unofficial tool. Source data is authoritative; observations and forecasts are not settled bills. See [changes](CHANGELOG.md) and [release notes](docs/RELEASE-v1.13.0.md).

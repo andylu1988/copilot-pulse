@@ -5,13 +5,19 @@
     <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.4"/></Border.Effect>
     <Border x:Name="PhotoShade" CornerRadius="23" Padding="0">
     <Grid>
-    <local:Atmosphere x:Name="FullAtmosphere" IsHitTestVisible="False"/>
+    <Border x:Name="FullBackdrop" Background="{Binding Background, ElementName=Surface}" IsHitTestVisible="False" CornerRadius="23"><Border Background="{Binding Background, ElementName=PhotoShade}" CornerRadius="23"><local:Atmosphere x:Name="FullAtmosphere"/></Border></Border>
     <StackPanel x:Name="ContentStack" Margin="23,19,23,18">
       <Grid Margin="0,0,0,27" Background="Transparent">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel x:Name="HeaderBrand" Orientation="Horizontal" VerticalAlignment="Center">
-          <Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource SkinHover}" Margin="0,0,10,0"><Path Width="19" Height="19" Stretch="Uniform" Fill="{DynamicResource SkinAccent}" Data="M12,0 L15,8 L23,11 L15,14 L12,22 L9,14 L1,11 L9,8 Z"/></Border>
+          <Border Width="34" Height="34" CornerRadius="10" BorderBrush="#557EC8B8" BorderThickness="1" Margin="0,0,10,0">
+            <Grid x:Name="BrandLogoSurface">
+              <Grid.Clip><RectangleGeometry Rect="0,0,32,32" RadiusX="9" RadiusY="9"/></Grid.Clip>
+              <local:GlassBackdrop/><Border Background="#22FFFFFF"/>
+              <Image x:Name="BrandLogo" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" SnapsToDevicePixels="True"/>
+            </Grid>
+          </Border>
           <StackPanel><TextBlock Text="COPILOT" FontSize="10" Foreground="{DynamicResource SkinMuted}" FontWeight="SemiBold"/><TextBlock Text="Pulse" FontSize="19" FontWeight="SemiBold" Margin="0,-1,0,0"/></StackPanel>
         </StackPanel>
         <StackPanel x:Name="HeaderActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -23,7 +29,7 @@
           <Button ToolTip="收起到系统托盘" AutomationProperties.Name="收起到系统托盘" Click="HideToTray"><Path Width="13" Height="14" Stroke="{DynamicResource SkinMuted}" StrokeThickness="1.5" Data="M1,7 L12,7"/></Button>
         </StackPanel>
       </Grid>
-      <Grid Margin="0,0,0,8"><TextBlock Text="本月内部用量" FontSize="13" Foreground="{DynamicResource SkinMuted}"/><Border HorizontalAlignment="Right" Background="{DynamicResource SkinHover}" CornerRadius="6" Padding="8,3"><TextBlock x:Name="MonthLabel" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SkinMuted}"/></Border></Grid>
+      <Grid Margin="0,0,0,8"><TextBlock Text="本月内部用量" FontSize="13" Foreground="{DynamicResource SkinMuted}"/><Border HorizontalAlignment="Right" CornerRadius="6" BorderBrush="#557EC8B8" BorderThickness="1" ClipToBounds="True"><Grid><local:GlassBackdrop/><Border Background="#22FFFFFF"/><TextBlock x:Name="MonthLabel" Margin="8,3" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SkinText}"/></Grid></Border></Grid>
       <local:MoneyReadout x:Name="FullAmount" Height="61"/>
       <TextBlock x:Name="UsageProgress" FontSize="11" Foreground="{DynamicResource SkinAccent}" Margin="1,4,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
       <Border x:Name="WarningBox" Visibility="Collapsed" CornerRadius="10" Background="#382A12" BorderBrush="#FFC857" BorderThickness="1.5" Padding="12,10" Margin="0,10,0,2">
@@ -42,14 +48,20 @@
       <Button x:Name="BaselinePanel" Click="OpenRecordingWindow" Visibility="Collapsed" HorizontalContentAlignment="Stretch" Padding="11,10" Background="{DynamicResource SkinChart}" Margin="0,8,0,0">
         <StackPanel>
           <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="130"/></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock x:Name="BaselineTitle" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="BaselineAmount" FontSize="23" FontWeight="SemiBold" Margin="0,5,0,3"/></StackPanel>
+            <StackPanel><TextBlock x:Name="BaselineTitle" TextTrimming="CharacterEllipsis" MaxWidth="245" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="BaselineAmount" FontSize="23" FontWeight="SemiBold" Margin="0,5,0,3"/></StackPanel>
             <local:HistoryChart x:Name="BaselineHistory" Grid.Column="1" Mini="True" Height="42" IsHitTestVisible="False"/>
           </Grid>
           <TextBlock x:Name="BaselineStart" FontSize="10" Foreground="{DynamicResource SkinMuted}"/>
           <TextBlock x:Name="BaselineSamples" FontSize="9" Foreground="{DynamicResource SkinMuted}" Margin="0,4,0,0" TextWrapping="Wrap"/>
         </StackPanel>
       </Button>
-      <Button x:Name="RecordPointButton" Click="ToggleRecordPoint" Content="增加记录点" FontSize="11" Background="{DynamicResource SkinHover}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,7"/>
+      <UniformGrid Columns="2" Rows="2" Margin="-3,8,-3,0">
+        <Button x:Name="RecordPointButton" Click="ToggleRecordPoint" Content="开始任务计量" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="TaskHistoryButton" Click="OpenTasks" Content="任务记录 / 导出 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="MiniRecordDeltaButton" Click="ToggleMiniRecordDelta" Content="迷你区间增量：关" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="UsageForecastButton" Click="OpenUsageForecast" Content="用量预估 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+      </UniformGrid>
+      <TextBlock x:Name="SamplingHealthLabel" FontSize="10" Margin="0,8,0,0" TextWrapping="Wrap"/>
       <Border x:Name="DemoBadge" Visibility="Collapsed" CornerRadius="5" Background="#493720" Padding="8,5" Margin="0,12,0,0"><TextBlock Text="示例预览 · 虚构金额，非实时数据" Foreground="#F4C77E" FontSize="11"/></Border>
       <StackPanel x:Name="DetailsPanel">
         <Grid Margin="0,27,0,12"><TextBlock Text="企业用量" FontSize="12" FontWeight="SemiBold"/><TextBlock Text="MONTH TO DATE" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SkinFaint}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>

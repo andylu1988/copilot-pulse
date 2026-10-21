@@ -206,40 +206,86 @@ internal static partial class DisplayArt
         }
         glyph.Transform = transforms; glyph.Freeze(); return glyph;
     }).ToArray());
+    // Rasterize the small, repeated glyphs once at 2x resolution rather than
+    // tessellating thousands of kana outlines on the UI thread every frame.
+    private static readonly Lazy<System.Windows.Media.Imaging.BitmapSource[][]> RainSprites = new(() =>
+    {
+        var colors = new[] { "#DEFFE8", "#64ED91", "#C1FFDA", "#45BA76" };
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+            for (int row = 0; row < colors.Length; row++)
+                for (int col = 0; col < RainGlyphs.Value.Length; col++)
+                {
+                    context.PushTransform(new TranslateTransform(col * 7, row * 9));
+                    context.DrawGeometry(Brush(colors[row]), null, RainGlyphs.Value[col]); context.Pop();
+                }
+        var atlas = new System.Windows.Media.Imaging.RenderTargetBitmap(RainGlyphs.Value.Length * 14, 72, 192, 192, PixelFormats.Pbgra32);
+        atlas.Render(visual); atlas.Freeze();
+        return colors.Select((_, row) => RainGlyphs.Value.Select((_, col) =>
+        {
+            var pixels = new byte[14 * 18 * 4];
+            atlas.CopyPixels(new Int32Rect(col * 14, row * 18, 14, 18), pixels, 14 * 4, 0);
+            var sprite = System.Windows.Media.Imaging.BitmapSource.Create(14, 18, 192, 192, PixelFormats.Pbgra32, null, pixels, 14 * 4);
+            sprite.Freeze(); return sprite;
+        }).ToArray()).ToArray();
+    });
+    internal static void PrepareMatrix() => _ = RainSprites.Value;
+    private static readonly Lazy<byte[][][]> RainPixels = new(() => RainSprites.Value.Select(palette => palette.Select(sprite =>
+    {
+        var pixels = new byte[14 * 18 * 4]; sprite.CopyPixels(pixels, 14 * 4, 0); return pixels;
+    }).ToArray()).ToArray());
+    private static readonly System.Collections.Generic.Dictionary<(int, int), byte[]> rainBuffers = new();
     private static void Matrix(DrawingContext dc, Rect r, SkinPalette p, double time, bool small)
     {
+        // Composite the rain into one bitmap. Hundreds of separate opacity
+        // groups otherwise create an expensive WPF composition graph, especially
+        // when layered windows are opened or closed.
+        int width = Math.Max(1, (int)Math.Ceiling(r.Width)), height = Math.Max(1, (int)Math.Ceiling(r.Height));
+        if (!rainBuffers.TryGetValue((width, height), out var canvas))
+        {
+            if (rainBuffers.Count >= 8) rainBuffers.Clear();
+            rainBuffers[(width, height)] = canvas = new byte[width * height * 4];
+        }
+        Array.Clear(canvas);
         int columns = small ? 28 : 42;
         int trail = small ? 16 : 20;
         const double rowStep = 10;
         double period = (trail + (small ? 8 : 9)) * rowStep;
-        // Reuse the trail brushes across columns; dense rain must not allocate a brush per glyph.
-        var bright = new SolidColorBrush[trail];
-        var dim = new SolidColorBrush[trail];
-        for (int row = 0; row < trail; row++)
-        {
-            double fade = Math.Pow(1 - row / (double)trail, 1.25);
-            bright[row] = Brush(row == 0 ? "#DEFFE8" : "#64ED91", row == 0 ? .94 : fade * .76);
-            dim[row] = Brush(row == 0 ? "#C1FFDA" : "#45BA76", row == 0 ? .70 : fade * .54);
-        }
         for (int col = 0; col < columns; col++)
         {
             double x = r.Left + 5 + col * (r.Width - 10) / columns;
             double offset = Cycle(col * .618 + time * (12 + col % 5 * 3) / period) * period;
-            var brushes = col % 3 == 0 ? bright : dim;
             // Repeat each stream down tall windows so the rain covers the whole surface.
             for (double head = offset; head < r.Height + trail * rowStep; head += period)
             for (int row = 0; row < trail; row++)
             {
                 double y = r.Top + head - row * rowStep;
                 if (y < r.Top - 8 || y > r.Bottom) continue;
-                dc.PushTransform(new TranslateTransform(x, y));
                 int epoch = (int)Math.Floor(time * (.55 + col % 4 * .12) + row * .17);
                 uint hash = unchecked((uint)(col * 92821 + row * 68917 + epoch * 283 + (int)(head / period) * 1531));
                 hash ^= hash >> 13; hash *= 1274126177u; hash ^= hash >> 16;
-                dc.DrawGeometry(brushes[row], null, RainGlyphs.Value[hash % (uint)RainGlyphs.Value.Length]);
-                dc.Pop();
+                int palette = (col % 3 == 0 ? 0 : 2) + (row == 0 ? 0 : 1);
+                double opacity = row == 0 ? (col % 3 == 0 ? .94 : .70) : Math.Pow(1 - row / (double)trail, 1.25) * (col % 3 == 0 ? .76 : .54);
+                var glyph = RainPixels.Value[palette][hash % (uint)RainGlyphs.Value.Length];
+                int left = (int)Math.Round(x - r.Left), top = (int)Math.Round(y - r.Top);
+                for (int gy = 0; gy < 9; gy++) for (int gx = 0; gx < 7; gx++)
+                {
+                    int px = left + gx, py = top + gy;
+                    if (px < 0 || px >= width || py < 0 || py >= height) continue;
+                    int source = (gy * 2 * 14 + gx * 2) * 4, target = (py * width + px) * 4;
+                    // Downsample the 2x glyph atlas, retaining its antialiasing.
+                    double alpha = (glyph[source + 3] + glyph[source + 7] + glyph[source + 59] + glyph[source + 63]) * .25 * opacity;
+                    double remaining = 1 - alpha / 255;
+                    for (int channel = 0; channel < 4; channel++)
+                    {
+                        double value = (glyph[source + channel] + glyph[source + 4 + channel] + glyph[source + 56 + channel] + glyph[source + 60 + channel]) * .25 * opacity;
+                        canvas[target + channel] = (byte)Math.Min(255, Math.Round(value + canvas[target + channel] * remaining));
+                    }
+                }
             }
         }
+        var frame = System.Windows.Media.Imaging.BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, canvas, width * 4);
+        frame.Freeze(); dc.DrawImage(frame, r);
         GlowLine(dc, new Point(r.Left + 12, r.Bottom - 3), new Point(r.Left + 65, r.Bottom - 3), p.Accent, .7);
     }
 
