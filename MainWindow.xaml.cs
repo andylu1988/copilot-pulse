@@ -57,7 +57,7 @@ public partial class MainWindow : Window
             historyWindow?.Close();
             recordingWindow?.Close();
             tasksWindow?.Close();
-            insightsWindow?.Close(); ReleaseHotkeys();
+            insightsWindow?.Close(); diagnosticsWindow?.Close(); ReleaseHotkeys();
             if (history != null) history.Changed -= HistoryChanged;
             SavePreferences();
             monitor?.Dispose();
@@ -273,7 +273,7 @@ public partial class MainWindow : Window
         var taskHistory = new MenuItem { Header = UiText.T("任务计量 / 导出…", "Task measurements / Export…") }; taskHistory.Click += OpenTasks; menu.Items.Add(taskHistory);
         var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
         var about = new MenuItem { Header = UiText.T("关于…", "About…") }; about.Click += (_, _) => OpenAbout(); menu.Items.Add(about);
-        var insights = new MenuItem { Header = UiText.T("用量预估 / 区间对比…", "Usage forecast / Compare tasks…") }; insights.Click += (_, _) => OpenInsights(); menu.Items.Add(insights);
+        var insights = new MenuItem { Header = UiText.T("用量预估…", "Usage forecast…") }; insights.Click += (_, _) => OpenInsights(); menu.Items.Add(insights);
         var diagnostic = new MenuItem { Header = UiText.T("连接诊断向导…", "Connection diagnostics…") }; diagnostic.Click += (_, _) => OpenInsights(2); menu.Items.Add(diagnostic);
         menu.Items.Add(BuildDisplayModeMenu());
         menu.Items.Add(BuildSkinMenu());
@@ -343,7 +343,7 @@ public partial class MainWindow : Window
         menu.Items.Add(UiText.T("开始 / 结束任务", "Start / End task"), null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); ToggleRecordPoint(this, new RoutedEventArgs()); }));
         menu.Items.Add(UiText.T("最近任务…", "Recent tasks…"), null, (_, _) => Dispatcher.Invoke(() => OpenTasks(this, new RoutedEventArgs())));
         menu.Items.Add(UiText.T(paused ? "恢复采样" : "暂停采样", paused ? "Resume sampling" : "Pause sampling"), null, (_, _) => Dispatcher.Invoke(ToggleSampling));
-        menu.Items.Add(UiText.T("用量预估 / 诊断…", "Usage forecast / Diagnostics…"), null, (_, _) => Dispatcher.Invoke(() => OpenInsights()));
+        menu.Items.Add(UiText.T("用量预估…", "Usage forecast…"), null, (_, _) => Dispatcher.Invoke(() => OpenInsights()));
         menu.Items.Add("显示小组件", null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); }));
         menu.Items.Add("迷你数字模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("mini")));
         menu.Items.Add("展开完整模式", null, (_,_) => Dispatcher.Invoke(() => SetDisplayMode("full")));

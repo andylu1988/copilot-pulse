@@ -39,10 +39,10 @@ public partial class HistoryWindow : Window
         viewPreferences = preferences ?? new Preferences();
         this.viewChanged = viewChanged;
         this.recordingMode = recordingMode;
-        if (recordingMode) { RangeButtons.Visibility = Visibility.Collapsed; HistoryTitleText.Text = UiText.T("记录区间增量", "Recorded Period Delta"); }
+        if (recordingMode) { RangeButtons.Visibility = Visibility.Collapsed; HistoryTitleText.Text = UiText.T("任务计量增量", "Task Measurement Delta"); }
         range = HistoryRanges.Normalize(viewPreferences.HistoryRange);
         changes = !recordingMode && viewPreferences.HistoryChanges;
-        if (recordingMode) NetLabel.Text = UiText.T("记录区间增量", "Recorded period delta");
+        if (recordingMode) NetLabel.Text = UiText.T("任务计量增量", "Task measurement delta");
         StorageButton.ToolTip = repository?.DirectoryPath ?? "示例模式";
         HistorySurface.SizeChanged += (_, _) => SkinTheme.ApplySurface(HistoryBackdrop, HistoryBackdropShade, true);
         SkinTheme.ApplySurface(HistoryBackdrop, HistoryBackdropShade, true);
@@ -100,7 +100,7 @@ public partial class HistoryWindow : Window
         UpdateBaselineBlock(DateTimeOffset.Now);
         SampleCount.Text = points.Count.ToString("N0") + " 次";
         CoverageLabel.Text = points.Count > 0 ? $"实际记录 {points[0].Time.LocalDateTime:MM/dd HH:mm} — {points[^1].Time.LocalDateTime:MM/dd HH:mm}" : "从首次记录开始积累";
-        PeriodLabel.Text = recordingMode ? $"{UiText.T("记录区间", "Recorded period")} · {SystemClock.Local(chartStart):MM/dd HH:mm} → {SystemClock.Local(chartEnd):MM/dd HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : range == "today" ? $"{UiText.Translate("今天")} · {SystemClock.Local(chartStart):MM/dd HH:mm} — {SystemClock.Local(chartEnd):HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : range == "month" || HistoryRanges.IsMonth(range) ? $"{UiText.Range(range)} · UTC 00:00 → {SystemClock.Local(chartStart):yyyy/MM/dd HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : UiText.Range(range);
+        PeriodLabel.Text = recordingMode ? $"{UiText.T("任务计量区间", "Task measurement period")} · {SystemClock.Local(chartStart):MM/dd HH:mm} → {SystemClock.Local(chartEnd):MM/dd HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : range == "today" ? $"{UiText.Translate("今天")} · {SystemClock.Local(chartStart):MM/dd HH:mm} — {SystemClock.Local(chartEnd):HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : range == "month" || HistoryRanges.IsMonth(range) ? $"{UiText.Range(range)} · UTC 00:00 → {SystemClock.Local(chartStart):yyyy/MM/dd HH:mm} · {SystemClock.ZoneLabel(chartStart)}" : UiText.Range(range);
         Chart.Accent = series == null ? SkinTheme.Current.Accent : SkinTheme.Current.Secondary;
         var chartPoints = recordingMode && !changes ? (net.HasValue ? HistoryMath.RecordedSeries(frames, series) : Array.Empty<HistoryPoint>()) : points;
         Chart.SetData(chartPoints, changes, recordingMode || range == "today" ? chartStart : null, recordingMode || range == "today" ? chartEnd : null);

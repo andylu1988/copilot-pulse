@@ -157,13 +157,11 @@ public partial class MainWindow
             MiniUsageProgress.Background = Brushes.Transparent;
             MiniUsageProgress.Padding = new Thickness(0);
         }
-        if (preferences.MiniShowRecordDelta)
+        if (ShowMiniTaskDelta)
         {
-            string recorded = !DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, out _)
-                ? UiText.T("记录区间 · 请先增加记录点", "Session · Add a record point first")
-                : !miniBaselineDelta.HasValue
-                    ? UiText.T("记录区间 · 等待有效采样", "Session · Waiting for valid samples")
-                    : UiText.T("记录区间增量", "Recorded period delta");
+            string recorded = !miniBaselineDelta.HasValue
+                    ? UiText.T("任务增量 · 等待有效采样", "Task delta · Waiting for valid samples")
+                    : UiText.T("任务计量增量", "Measured task delta");
             mini = warningActive ? $"⚠ {recorded}" : recorded;
         }
         MiniUsageProgress.Text = mini;

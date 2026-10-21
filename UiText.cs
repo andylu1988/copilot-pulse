@@ -15,14 +15,14 @@ internal static class UiText
     internal static string T(string zh, string en) => English ? en : zh;
     internal static string TaskName(string name) => name switch
     {
-        "Recorded period" => T("记录区间增量", "Recorded period"),
+        "Recorded period" => T("任务计量增量", "Task measurement"),
         "Untitled task" => T("未命名任务", "Untitled task"),
         _ => name
     };
     private static readonly Dictionary<string, string> Words = new()
     {
-        ["任务记录 / 导出 ↗"] = "Tasks / Export ↗",
-        ["开始任务计量"] = "Start task",
+        ["计量记录 ↗"] = "Measurement history ↗",
+        ["开始任务计量"] = "Start measurement",
         ["用量预估 ↗"] = "Usage forecast ↗",
         ["迷你"] = "Mini",
         ["换肤"] = "Appearance",

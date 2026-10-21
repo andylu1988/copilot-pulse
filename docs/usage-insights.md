@@ -1,24 +1,19 @@
 # 用量预估与快捷操作 / Usage forecast and shortcuts
 
-v1.13.0。入口：主界面 **用量预估**（含区间对比与配额预测），菜单 **连接诊断**；通知和快捷键在 **⋯ → 设置** 中配置。
+v1.13.1。入口：主界面 **用量预估**；主菜单 **连接诊断** 打开独立窗口。
 
 ## 中文
 
-### 区间对比与截图
+### 精简后的用量预估
 
-在“用量预估 → 区间对比”选择两个不同任务。并排查看观测增量、持续时间、单次最大变化和有效采样数，下方各自的曲线保留实际时间轴。A − B 表示两个任务的观测增量之差。至少需要两个任务；没有足够有效读数显示 `—`。
+窗口依次突出 **预计月末累计量 → 按此速度是否会达到目标 → 进度条 → 小字统计依据**。只看 Overall，不再分账户、选择不同速度或读取历史文件；移除了区间对比及连接操作。诊断改为主界面 **⋯ → 连接诊断** 的独立窗口。
 
-“导出对比截图”保存 PNG，默认隐藏任务名。“任务记录 / 导出”也可以导出单个任务截图。匿名截图仍含时间和金额，分享前请检查。观测区间可以估计单次任务花费，源页面延迟和同时运行的其他工作会影响归属；峰值是相邻有效采样变化，受采样间隔影响。
+计算：**本月累计 ÷ UTC 配额月已过时长 × 当月总时长**。配置金额提醒阈值时，优先按该阈值判断是否预计超出；例如 $2,000。提醒阈值是个人目标，不会改变源站配额，因此界面明确称“达到提醒阈值”。没有金额阈值时，仅在源站提供可合计的完整数值上限时判断配额耗尽；百分比阈值缺少金额上限时会说明无法换算。静音通知不会清除预估目标。
 
-### 配额预测
+![forecast · Matrix](screenshots/v1.13.1/release-forecast-zh-CN.png)
 
-“用量预估 → 配额预测”可选择近 1 小时、过去 24 小时或本月记录作为外推速度。每个账户显示已用金额和页面百分比、剩余额度、月末预计累计量，以及按剩余重置时间均摊的每日参考额度。记录覆盖范围与采样数随结果显示，至少需要两个可比较读数且跨度不少于一分钟；断档会明确提示端点平均。
+源读数过旧、属于上月或未来时暂停预估；按源读数时间计算，重绘不会推迟预计达到目标的时间。预估会随后续工作强度变化，仅供参考。
 
-页面提供数值上限时，按数值上限计算剩余金额；页面仅显示 `Standard` 时，不假定固定金额上限，而按当前金额与页面已用百分比的比例估算月末百分比及耗尽风险，标记 `≈ 百分比外推`。页面百分比四舍五入会影响精度，低于 0.1% 时不据此外推；全零且无数值上限时保持未知。
-
-重置以 **UTC 月初 00:00** 为边界，同时换算 Windows 当前系统时区显示。计算以源读数时间为锚点，刷新窗口不会把预计耗尽时间向后推移。源读数延迟超过采样容忍范围、属于上个月或未来时间时暂停预测，并提示重新采样。金额下调、账户缺失和记录不足分别说明原因；已达到额度与低速度下重置前不会耗尽分别显示。
-
-“刷新”只重读本机记录；“立即采样”请求刷新数据源。成功采样不保证页面已结算，预测不是账单或保证，未来工作强度变化会影响预测。
 
 ### 提醒与免打扰
 
@@ -57,23 +52,18 @@ v1.13.0。入口：主界面 **用量预估**（含区间对比与配额预测�
 
 ## English
 
-Version 1.13.0. Open **Usage forecast** for task comparison and quota forecasts, or **Connection diagnostics** from the menu. Notifications and shortcuts are configured in **Settings**.
+Version 1.13.1. Usage forecast and Connection diagnostics are separate windows.
 
-### Comparison and reports
+### A smaller Overall forecast
 
-Choose two distinct tasks in **Usage forecast → Compare tasks**. Compare observed delta, duration, largest sample change and valid sample count. Each chart retains its actual timestamps. A − B is the difference between observed task deltas. Insufficient readings are shown as `—`.
+The forecast emphasizes **projected month-end usage**, **whether the target is expected to be reached**, then progress and concise statistics. Calculation: **Overall month-to-date usage ÷ elapsed UTC quota-month duration × full month duration**. It no longer scans history, splits accounts or offers comparison/rate tabs.
 
-Export a PNG comparison with task names hidden by default, or export an individual task image from **Task records / Export**. Anonymous images still contain timestamps and amounts; review before sharing. Observations help estimate the cost of a single task, but source lag and concurrent work may shift attribution. Peak sample changes depend on sampling cadence.
+An amount alert threshold configured in Settings takes priority over source caps. This is a personal target, not a change to the service quota. Without it, depletion is assessed only when complete numeric source caps are available. A percentage threshold cannot be converted to an Overall amount without those caps. Muting notifications retains the target. Stale, prior-month and future readings pause forecasts. Results are estimates, not bills.
 
-### Quota forecasts
+![forecast · Matrix](screenshots/v1.13.1/release-forecast-en.png)
 
-**Quota forecast** lets you select the last hour, last 24 hours or observed current month as the extrapolation basis. Each account shows source cost and percentage, remaining quota, projected month-end usage and a daily allowance evenly spread until reset. Actual coverage, sample counts and gaps are disclosed. At least two comparable readings spanning one minute are required.
+Connection actions have moved to the independent **⋯ → Connection diagnostics** window. Task comparison has been removed.
 
-Numeric source limits provide monetary remaining quota. For `Standard` plans without numeric limits, the current cost-to-percentage ratio supports an explicitly approximate percentage projection and depletion risk. No fixed monetary limit is assumed. Source rounding affects precision; percentages below 0.1% are not extrapolated, and all-zero readings without a numeric limit remain unknown.
-
-Resets follow **00:00 UTC on the first day of the month**, also displayed in the current Windows timezone. Forecasts are anchored to the source timestamp, so repainting does not postpone depletion. Stale readings, prior-month readings and future timestamps pause predictions. Corrections, missing accounts and insufficient samples have separate explanations. Already exhausted and low-rate usage that will not exhaust before reset are shown explicitly.
-
-**Refresh** reloads local records; **Refresh source** requests a new source reading. Successful sampling does not guarantee settled page data. Forecasts are estimates rather than billing or guarantees, and changing workloads affect results.
 
 ### Notifications
 

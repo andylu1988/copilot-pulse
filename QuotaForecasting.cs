@@ -22,10 +22,49 @@ public sealed record QuotaForecast
     public bool? DepletesBeforeReset { get; init; }
     public DateTimeOffset? Depletion { get; init; }
     public bool Exhausted { get; init; }
+    public decimal? Target { get; init; }
+    public bool UsesAlertThreshold { get; init; }
 }
 
 public static class QuotaForecasting
 {
+    // Overall is the source page's month-to-date total. No history scan is needed.
+    public static QuotaForecast MonthlyOverall(Consumption value, DateTimeOffset now, int cadence = 60, Preferences? preferences = null)
+    {
+        var month = HistoryRanges.Start("month", now);
+        var readingAt = value.FetchedAt;
+        var result = new QuotaForecast { AsOf = readingAt, Reset = month.AddMonths(1) };
+        if (!value.Ok || value.Total < 0 || readingAt == DateTimeOffset.MinValue || readingAt > now)
+            return result with { State = ForecastState.InvalidReading };
+        if (HistoryRanges.Period(readingAt) != HistoryRanges.Period(now))
+            return result with { State = ForecastState.WrongMonth };
+        if (now - readingAt > TimeSpan.FromSeconds(Math.Max(120, 2 * Math.Clamp(cadence, 30, 900) + 30)))
+            return result with { State = ForecastState.Stale };
+        decimal elapsed = (decimal)(readingAt - month).TotalHours;
+        if (elapsed <= 0) return result with { State = ForecastState.Insufficient };
+        decimal rate = value.Total / elapsed;
+        decimal projected = value.Total * (decimal)(result.Reset - month).TotalHours / elapsed;
+        // Only explicit numeric caps can be summed. Standard percentages are not additive.
+        decimal? limit = value.Accounts.Count > 0 && value.Accounts.All(a => a.Limit.HasValue && a.Limit >= 0)
+            ? value.Accounts.Sum(a => a.Limit!.Value) : null;
+        // Notification delivery can be muted without removing the configured forecast target.
+        bool alert = preferences != null;
+        if (preferences != null)
+            limit = preferences.WarningMode == "amount" ? Math.Clamp(preferences.WarningAmount, .01m, 1_000_000_000m)
+                : limit * Math.Clamp(preferences.WarningPercent, 1m, 100m) / 100;
+        decimal? percent = limit > 0 ? value.Total / limit.Value * 100 : limit == 0 ? 100m : null;
+        bool exhausted = limit.HasValue && value.Total >= limit.Value;
+        bool? depletes = limit.HasValue ? exhausted || (alert ? projected >= limit.Value : projected > limit.Value) : null;
+        return result with { State = ForecastState.Ready,
+            Target = limit, UsesAlertThreshold = alert,
+            Rate = new UsageRate(rate, month, readingAt, 0),
+            ProjectedCost = projected, Remaining = limit.HasValue ? Math.Max(0, limit.Value - value.Total) : null,
+            RemainingPercent = percent.HasValue ? Math.Max(0, 100 - percent.Value) : null,
+            ProjectedPercent = limit > 0 ? projected / limit.Value * 100 : null,
+            Exhausted = exhausted, DepletesBeforeReset = depletes,
+            Depletion = exhausted ? readingAt : depletes == true && rate > 0 ? month.AddHours((double)(limit!.Value / rate)) : null };
+    }
+
     // Predictions are anchored to the actual source timestamp, never to a repaint.
     // Standard plans expose rounded percentages, not an authoritative monetary cap.
     public static QuotaForecast Build(IReadOnlyList<HistoryFrame> history, Account account,

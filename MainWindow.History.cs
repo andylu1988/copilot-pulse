@@ -18,6 +18,8 @@ public partial class MainWindow
     private int miniRevision;
     private DateTimeOffset miniHistoryUpdated;
     private decimal? miniBaselineDelta;
+    private bool HasActiveMeasurement => DateTimeOffset.TryParse(preferences.MeasurementBaselineUtc, out _);
+    private bool ShowMiniTaskDelta => preferences.MiniShowRecordDelta && HasActiveMeasurement;
 
     private void InitializeHistory()
     {
@@ -50,10 +52,10 @@ public partial class MainWindow
             var baselineFrames = !hasBaseline ? Array.Empty<HistoryFrame>() : demoHistory != null ? demoHistory.Where(f => f.Time >= baseline && f.Time <= now).ToArray() : history == null ? Array.Empty<HistoryFrame>() : (await Task.Run(() => history.ReadRange(baseline, now))).ToArray();
             if (closing || request != miniRevision) return;
             BaselinePanel.Visibility = hasBaseline ? Visibility.Visible : Visibility.Collapsed;
-            RecordPointButton.Content = hasBaseline ? UiText.T("结束并保存任务", "End & save task") : UiText.T("开始任务计量", "Start task");
+            RecordPointButton.Content = hasBaseline ? UiText.T("结束并保存计量", "End & save measurement") : UiText.T("开始任务计量", "Start measurement");
             RefreshMiniRecordDeltaButton();
             var activeTask = measurementTasks?.Tasks.SingleOrDefault(t => t.EndUtc == null);
-            BaselineTitle.Text = activeTask != null ? UiText.TaskName(activeTask.Name) : UiText.T("记录区间增量  ↗", "Recorded period delta  ↗");
+            BaselineTitle.Text = activeTask != null ? UiText.TaskName(activeTask.Name) : UiText.T("任务计量增量  ↗", "Task measurement delta  ↗");
             BaselineTitle.ToolTip = BaselineTitle.Text;
             var baselinePoints = HistoryMath.Series(baselineFrames, null);
             miniBaselineDelta = HistoryMath.BaselineNetChange(baselineFrames, null);
@@ -93,7 +95,7 @@ public partial class MainWindow
         {
             preferences.MeasurementBaselineUtc = "";
             recordingWindow?.Close();
-            RecordPointButton.Content = UiText.T("开始任务计量", "Start task");
+            RecordPointButton.Content = UiText.T("开始任务计量", "Start measurement");
             miniBaselineDelta = null;
         }
         else
@@ -101,9 +103,10 @@ public partial class MainWindow
             // Start at the click, never backdate the session to an old cached reading.
             DateTimeOffset point = measurementTasks!.Tasks.Single(t => t.EndUtc == null).StartUtc;
             preferences.MeasurementBaselineUtc = point.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
-            RecordPointButton.Content = UiText.T("结束并保存任务", "End & save task");
+            RecordPointButton.Content = UiText.T("结束并保存计量", "End & save measurement");
         }
         RefreshMiniRecordDeltaButton();
+        RefreshUsageProgress();
         SavePreferences();
         _ = RefreshMiniHistoryAsync();
         if (!active && monitor != null) _ = monitor.RefreshAsync();
@@ -112,6 +115,7 @@ public partial class MainWindow
 
     private void ToggleMiniRecordDelta(object sender, RoutedEventArgs e)
     {
+        if (!HasActiveMeasurement) { RefreshMiniRecordDeltaButton(); RefreshUsageProgress(); return; }
         preferences.MiniShowRecordDelta = !preferences.MiniShowRecordDelta;
         RefreshMiniRecordDeltaButton();
         SavePreferences();
@@ -121,12 +125,16 @@ public partial class MainWindow
     private void RefreshMiniRecordDeltaButton()
     {
         if (!IsInitialized) return;
+        bool active = HasActiveMeasurement;
+        if (!active) preferences.MiniShowRecordDelta = false;
+        MiniRecordDeltaButton.IsEnabled = active;
+        System.Windows.Controls.ToolTipService.SetShowOnDisabled(MiniRecordDeltaButton, true);
         MiniRecordDeltaButton.Content = preferences.MiniShowRecordDelta
-            ? UiText.T("迷你区间增量：开", "Mini delta: On")
-            : UiText.T("迷你区间增量：关", "Mini delta: Off");
-        MiniRecordDeltaButton.ToolTip = UiText.T(
-            "开启后迷你模式大数字显示记录区间增量；关闭后显示本月总用量。请先增加记录点并等待成功采样。",
-            "Show recorded-period delta as the large mini number, or monthly total when off. Add a record point and wait for successful samples first.");
+            ? UiText.T("迷你显示任务增量：开", "Mini task delta: On")
+            : UiText.T("迷你显示任务增量：关", "Mini task delta: Off");
+        MiniRecordDeltaButton.ToolTip = !active
+            ? UiText.T("请先开始任务计量，再选择迷你显示任务增量。", "Start a task before choosing to show its delta in mini mode.")
+            : UiText.T("开启后迷你模式显示当前任务的计量增量；关闭后显示本月总用量。结束任务后自动恢复总用量。", "Show the active task's measured delta in mini mode. When off or the task ends, show the monthly total.");
     }
 
     private void OpenRecordingWindow(object sender, RoutedEventArgs e)

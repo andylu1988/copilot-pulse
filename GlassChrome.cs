@@ -143,7 +143,10 @@ public sealed class GlassBackdrop : FrameworkElement
         // for every button. Matrix rain continues to animate once on the window itself.
         if (source.ActualWidth <= 0 || source.ActualHeight <= 0) return;
         var brush = new ImageBrush(GlassChrome.Frost(source)) { ViewboxUnits = BrushMappingMode.RelativeToBoundingBox,
-            Viewbox = new Rect(origin.X / source.ActualWidth, origin.Y / source.ActualHeight, ActualWidth / source.ActualWidth, ActualHeight / source.ActualHeight), Stretch = Stretch.Fill };
+            Viewbox = new Rect(origin.X / source.ActualWidth, origin.Y / source.ActualHeight, ActualWidth / source.ActualWidth, ActualHeight / source.ActualHeight), Stretch = Stretch.Fill,
+            // Blend the cached frost with the original background so animated rain
+            // remains visible without capturing or blurring it a second time.
+            Opacity = 0.30 };
         brush.Freeze();
         dc.DrawRectangle(brush, null, new Rect(RenderSize));
     }

@@ -21,7 +21,7 @@ internal sealed class AboutWindow : Window
         Title = UiText.T("Copilot Pulse · 关于", "Copilot Pulse · About"); Icon = BrandIcon.Window;
         Width = 510; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SetResourceReference(BackgroundProperty, "SkinPanel"); SetResourceReference(ForegroundProperty, "SkinText");
-        var body = new StackPanel { Margin = new Thickness(26) }; Content = body;
+        var body = new StackPanel { Margin = new Thickness(26) }; _ = new UtilitySkin(this, body);
         var brand = new TextBlock { Text = "Copilot Pulse", FontSize = 28, FontWeight = FontWeights.SemiBold }; brand.SetResourceReference(TextBlock.ForegroundProperty, "SkinAccent"); body.Children.Add(brand);
         body.Children.Add(new TextBlock { Text = UiText.T("桌面上的 Copilot 用量脉搏", "Your Copilot usage, on the desktop"), Margin = new Thickness(0,8,0,20) });
         void Row(string label, TextBlock value)
@@ -55,7 +55,7 @@ internal sealed class AboutWindow : Window
         try
         {
             Version? latest;
-            if (App.Demo || App.Smoke) latest = new Version(1,12,0);
+            if (App.Demo || App.Smoke) latest = UpdatePolicy.Current;
             else latest = (await service.LatestAsync(preferences.UpdateRepository,cancel.Token))?.Version;
             if (cancel.IsCancellationRequested) return;
             cloud.Text = latest?.ToString() ?? UiText.T("没有可用的正式安装包", "No stable installer available");

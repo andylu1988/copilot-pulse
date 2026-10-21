@@ -1,6 +1,6 @@
 using System;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace CopilotPulse;
@@ -8,35 +8,42 @@ public partial class MainWindow
 {
     private async Task ReviewQuotaScenarios(string directory)
     {
-        var now = DateTimeOffset.UtcNow;
-        foreach(string language in new[]{"zh-CN","en"})
+        var now = new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero);
+        foreach (string language in new[] { "zh-CN", "en" })
         {
-            UiText.Language=language;
-            OpenInsights(1); await Task.Delay(350);
-            for(int index=0;index<3;index++) { insightsWindow!.SelectForecastRangeForReview(index); await Task.Delay(50); }
-            insightsWindow!.SelectForecastRangeForReview(1);
-            foreach(string scenario in new[]{"standard","risk","stale"})
+            UiText.Language = language;
+            var reading = new Consumption { Ok = true, FetchedAt = now, Total = 500,
+                Accounts = new() { new Account { Name = "Hidden account A", Cost = 200 }, new Account { Name = "Hidden account B", Cost = 300 } } };
+            var window = new InsightsWindow(null,
+                () => throw new InvalidOperationException("Forecast must not read history"), () => reading,
+                () => throw new InvalidOperationException("Forecast must not run diagnostics"), 1) { Owner = this };
+            window.Show(); await window.ReloadAsync(); await Task.Delay(150);
+            var settings = new Preferences { WarningMode = "amount", WarningAmount = 2000, WarningEnabled = true };
+            foreach (string scenario in new[] { "standard", "risk", "reached", "boundary", "percent", "stale" })
             {
-                var reading=new Consumption {Ok=true,FetchedAt=now,Total=577.14m,Accounts=new(){new Account{Name=UiText.T("演示账户 · Standard","Demo account · Standard"),Login="demo",Cost=577.14m,Percent=5.77,LimitLabel="Standard"}}};
-                if(scenario=="risk") {reading.Accounts[0].Name=UiText.T("演示账户 · 数值额度","Demo account · Numeric quota");reading.Accounts[0].Cost=95;reading.Accounts[0].Limit=100;reading.Accounts[0].Percent=95;}
-                var h=Enumerable.Range(0,25).Select(i=>HistoryFrame.From(new Consumption {Ok=true,FetchedAt=now.AddHours(i-24),Accounts=new(){new Account{Name=reading.Accounts[0].Name,Login="demo",Cost=reading.Accounts[0].Cost-(24-i)*(scenario=="risk"?2m:1.5m)} }},3600)).ToArray();
-                insightsWindow!.ReviewForecast(reading,h,scenario=="stale"?now.AddHours(3):now);
-                await Task.Delay(120);
-                CaptureControl(insightsWindow,Path.Combine(directory,$"quota-{scenario}-{language}.png"));
-                string text=insightsWindow.ForecastReviewText();
-                string required=scenario=="standard"?UiText.T("百分比外推","Percentage extrapolation"):scenario=="risk"?UiText.T("预计在","Estimated depletion"):UiText.T("源读数已延迟","Source reading is stale");
-                if(!text.Contains(required)) throw new InvalidOperationException("Quota scenario UI missing state: "+scenario+" "+language);
-                if(scenario=="stale" && text.Contains(UiText.T("月末累计约","Projected month-end"))) throw new InvalidOperationException("Stale UI still predicts");
-                if (scenario != "stale")
-                {
-                    int projection = text.IndexOf(UiText.T("预计月末累计用量", "Projected month-end usage"), StringComparison.Ordinal);
-                    int stats = text.IndexOf(UiText.T("当前已用", "Currently used"), StringComparison.Ordinal);
-                    if (projection < 0 || stats <= projection) throw new InvalidOperationException("Forecast emphasis order invalid");
-                }
-                File.WriteAllText(Path.Combine(directory,$"quota-{scenario}-{language}.txt"),text);
+                settings.WarningMode = scenario == "percent" ? "percent" : "amount";
+                settings.WarningAmount = scenario == "risk" ? 600 : scenario == "reached" ? 500 : scenario == "boundary" ? 1000 : 2000;
+                window.ReviewForecast(reading, Array.Empty<HistoryFrame>(), scenario == "stale" ? now.AddHours(3) : now, settings);
+                await Task.Delay(100);
+                CaptureControl(window, Path.Combine(directory, $"quota-{scenario}-{language}.png"));
+                string text = window.ForecastReviewText();
+                string required = scenario == "standard" ? UiText.T("月末预计不超出提醒阈值", "stay below the alert threshold")
+                    : scenario == "risk" || scenario == "boundary" ? UiText.T("按本月平均速度预计达到提醒阈值", "Expected to reach alert threshold")
+                    : scenario == "reached" ? UiText.T("已达到提醒阈值", "Alert threshold reached")
+                    : scenario == "percent" ? UiText.T("已读取百分比阈值", "Percentage threshold loaded")
+                    : UiText.T("源读数已延迟", "Source reading is stale");
+                if (!text.Contains(required) || text.Contains("Hidden account") || text.Contains("24" + UiText.T("小时", " hours")))
+                    throw new InvalidOperationException("Overall forecast UI invalid: " + scenario + " " + language);
+                if (scenario == "stale" && text.Contains("≈ $")) throw new InvalidOperationException("Stale UI still predicts");
+                if (scenario != "stale" && !text.Contains("1,000.00")) throw new InvalidOperationException("Monthly projection must be $1,000");
+                if (scenario == "standard" && (!text.Contains("2,000.00") || !text.Contains("25%"))) throw new InvalidOperationException("Configured $2000 threshold missing");
+                File.WriteAllText(Path.Combine(directory, $"quota-{scenario}-{language}.txt"), text);
             }
-            insightsWindow!.Close();
+            var watch = Stopwatch.StartNew();
+            for (int i = 0; i < 100; i++) window.ReviewForecast(reading, Array.Empty<HistoryFrame>(), now);
+            File.WriteAllText(Path.Combine(directory, "forecast-timing-" + language + ".txt"), $"100 Overall forecast renders: {watch.Elapsed.TotalMilliseconds:0.0} ms. No history or diagnostic calls.");
+            window.Close();
         }
-        UiText.Language=preferences.Language;
+        UiText.Language = preferences.Language;
     }
 }

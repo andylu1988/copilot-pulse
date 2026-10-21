@@ -57,8 +57,8 @@
       </Button>
       <UniformGrid Columns="2" Rows="2" Margin="-3,8,-3,0">
         <Button x:Name="RecordPointButton" Click="ToggleRecordPoint" Content="开始任务计量" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
-        <Button x:Name="TaskHistoryButton" Click="OpenTasks" Content="任务记录 / 导出 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
-        <Button x:Name="MiniRecordDeltaButton" Click="ToggleMiniRecordDelta" Content="迷你区间增量：关" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="TaskHistoryButton" Click="OpenTasks" Content="计量记录 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="MiniRecordDeltaButton" Click="ToggleMiniRecordDelta" Content="迷你显示任务增量：关" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
         <Button x:Name="UsageForecastButton" Click="OpenUsageForecast" Content="用量预估 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
       </UniformGrid>
       <TextBlock x:Name="SamplingHealthLabel" FontSize="10" Margin="0,8,0,0" TextWrapping="Wrap"/>

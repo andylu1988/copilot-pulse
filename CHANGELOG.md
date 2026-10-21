@@ -1,5 +1,19 @@
 # Copilot Pulse
 
+## 1.13.1：计量与外观整理 / Measurement and interface refinement
+
+- 包含 1.13.0 的任务备注、采样健康、导出、通知、快捷操作和图表功能。
+- 统一“任务计量 / 计量记录 / 迷你显示任务增量”；未开始任务禁用迷你增量，结束后立即恢复月度 Overall。
+- 用量预估缩为独立小窗口，仅以 Overall 本月累计按 UTC 月均速度推算；优先读取金额提醒阈值，不再依赖历史文件或分账户。
+- 移除区间对比和预估内的连接操作；连接诊断从主菜单独立打开。
+- 关于、在线更新、任务命名套用当前皮肤和玻璃按钮，更新仓库下拉适配深色；更新中英文说明与矩阵截图。
+- Retain prior task notes, health, exports, alerts, shortcuts and interactive charts.
+- Disable mini task delta without an active measurement; restore monthly Overall immediately on ending.
+- Simplify forecasts to Overall UTC monthly average and prioritize configured amount thresholds. Remove comparison and move diagnostics into a standalone window.
+- Theme About, Update and task naming consistently; refresh bilingual documentation and Matrix screenshots.
+- [完整介绍 / Full release notes](docs/RELEASE-v1.13.1.md).
+
+
 ## 1.13.0：任务观察与用量预估 / Task observations and usage forecasts
 
 - 命名任务、采样健康、持久化任务记录、匿名 CSV / JSON、摘要与 PNG；迷你任务增量由主界面手动选择，默认月度累计。

@@ -50,7 +50,7 @@ public partial class MainWindow
         _ = RefreshMiniHistoryAsync();
         EvaluateWarning(false);
         ConfigureHotkeys(); EvaluateReminders(true);
-        insightsWindow?.Close();
+        insightsWindow?.Close(); diagnosticsWindow?.Close();
         SavePreferences();
     }
     private void EvaluateWarning(bool notify)

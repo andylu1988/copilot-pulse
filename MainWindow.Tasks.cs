@@ -163,23 +163,24 @@ public partial class MainWindow
         File.WriteAllText(Path.Combine(directory, "tasks.csv"), TaskExport.Csv(measurementTasks.Tasks, demoHistory!, samplingLog.ReadAll(), DateTimeOffset.UtcNow, true));
         tasksWindow.Close();
         InsightUi.SavePng(InsightUi.TaskReport(task,demoHistory!,DateTimeOffset.UtcNow,true),Path.Combine(directory,"task-report.png"));
-        OpenInsights(0); await Task.Delay(500); await insightsWindow!.ReloadAsync(); await Task.Delay(300);
+        OpenInsights(1); await Task.Delay(500); await insightsWindow!.ReloadAsync(); await Task.Delay(300);
         if (GlassChrome.GetSource(insightsWindow) == null || GlassChrome.GetSource(this) != FullBackdrop)
             throw new InvalidOperationException("Glass background source missing");
         string skin = preferences.SkinId ?? "midnight";
         preferences.SkinId = "midnight"; SkinEdited(); await Task.Delay(120);
         CaptureControl(insightsWindow, Path.Combine(directory, "insights-midnight.png"));
         preferences.SkinId = skin; SkinEdited(); await Task.Delay(120);
-        CaptureControl(insightsWindow,Path.Combine(directory,"insights-compare-zh.png"));
-        insightsWindow.ExportReview(directory);
-        insightsWindow.SelectTab(1); await Task.Delay(150); CaptureControl(insightsWindow,Path.Combine(directory,"insights-forecast-zh.png"));
-        insightsWindow.SelectTab(2); await Task.Delay(150); CaptureControl(insightsWindow,Path.Combine(directory,"insights-diagnostics-zh.png"));
+        CaptureControl(insightsWindow,Path.Combine(directory,"insights-forecast-zh.png"));
+        if (insightsWindow.Width > 600) throw new InvalidOperationException("Forecast window must remain compact");
+        insightsWindow.Close(); OpenDiagnostics(); await diagnosticsWindow!.ReloadAsync(); await Task.Delay(150);
+        CaptureControl(diagnosticsWindow,Path.Combine(directory,"insights-diagnostics-zh.png"));
+        diagnosticsWindow.ExportReview(directory);
         string diagnostic = File.ReadAllText(Path.Combine(directory,"diagnostics.json"));
         if (diagnostic.Contains("demo-user") || diagnostic.Contains("1234.56")) throw new InvalidOperationException("Diagnostic privacy failure");
-        insightsWindow.Close();
+        diagnosticsWindow!.Close();
         string language = preferences.Language; preferences.Language = "en"; UiText.Language = "en";
         OpenInsights(0); await Task.Delay(400); await insightsWindow!.ReloadAsync(); await Task.Delay(200);
-        CaptureControl(insightsWindow,Path.Combine(directory,"insights-compare-en.png")); insightsWindow.Close();
+        CaptureControl(insightsWindow,Path.Combine(directory,"insights-forecast-en.png")); insightsWindow.Close();
         preferences.Language = language; UiText.Language = language;
         foreach (string lang in new[] { "zh-CN", "en" })
         {
@@ -216,6 +217,20 @@ public partial class MainWindow
         OpenUsageForecast(this, new RoutedEventArgs()); await Task.Delay(200);
         if (!insightsWindow!.Title.Contains(UiText.T("用量预估", "Usage forecast"))) throw new InvalidOperationException("Usage forecast naming mismatch");
         insightsWindow.Close();
+        string? oldBaseline = preferences.MeasurementBaselineUtc;
+        bool oldMiniDelta = preferences.MiniShowRecordDelta;
+        preferences.MeasurementBaselineUtc = "";
+        preferences.MiniShowRecordDelta = true;
+        RefreshMiniRecordDeltaButton(); RefreshUsageProgress();
+        if (MiniRecordDeltaButton.IsEnabled || preferences.MiniShowRecordDelta || ShowMiniTaskDelta)
+            throw new InvalidOperationException("Inactive measurement must disable and clear mini task delta");
+        ToggleMiniRecordDelta(this, new RoutedEventArgs());
+        if (preferences.MiniShowRecordDelta) throw new InvalidOperationException("Inactive task delta was enabled");
+        preferences.MeasurementBaselineUtc = demoHistory![87].Time.ToString("O"); RefreshMiniRecordDeltaButton();
+        if (!MiniRecordDeltaButton.IsEnabled || preferences.MiniShowRecordDelta)
+            throw new InvalidOperationException("Active task must enable opt-in without selecting it");
+        preferences.MeasurementBaselineUtc = oldBaseline;
+        preferences.MiniShowRecordDelta = oldMiniDelta; RefreshMiniRecordDeltaButton(); RefreshUsageProgress();
         OpenHistory(this, new RoutedEventArgs()); await Task.Delay(200); await historyWindow!.ReloadAsync();
         if (GlassChrome.GetSource(historyWindow) == null) throw new InvalidOperationException("History glass source missing");
         CaptureControl(historyWindow, Path.Combine(directory, "history-glass.png")); historyWindow.Close();
@@ -232,7 +247,7 @@ public partial class MainWindow
         Capture(Path.Combine(directory, "widget-tasks-en.png"));
         preferences.Language = language; ApplySettings();
         await CaptureReleaseGallery(directory);
-        File.WriteAllText(Path.Combine(directory, "feature-checks.txt"), "PASS: 16 samples, 1 failed refresh, 1 retry; anonymous exports; isolated demo; bilingual comparison, forecast, diagnostics, PNG exports, chart zoom/preserve/reset, diagnostic privacy.\n");
+        File.WriteAllText(Path.Combine(directory, "feature-checks.txt"), "PASS: 16 samples, 1 failed refresh, 1 retry; anonymous exports; isolated demo; bilingual compact forecast, standalone diagnostics, themed About/Update/task naming, PNG exports, chart zoom/preserve/reset, diagnostic privacy.\n");
     }
 
     private async Task CaptureReleaseGallery(string directory)
@@ -270,11 +285,19 @@ public partial class MainWindow
             CaptureControl(historyWindow, Path.Combine(directory, $"release-changes-{lang}.png")); historyWindow.Close();
             OpenTasks(this, new RoutedEventArgs()); await tasksWindow!.ReloadAsync(); tasksWindow.SelectForReview(1); await Task.Delay(100);
             CaptureControl(tasksWindow, Path.Combine(directory, $"release-tasks-{lang}.png")); tasksWindow.Close();
-            foreach (int tab in new[] { 0, 2 })
-            {
-                OpenInsights(tab); await insightsWindow!.ReloadAsync(); await Task.Delay(100);
-                CaptureControl(insightsWindow, Path.Combine(directory, $"release-{(tab == 0 ? "compare" : "diagnostics")}-{lang}.png")); insightsWindow.Close();
-            }
+            OpenInsights(1); await insightsWindow!.ReloadAsync(); await Task.Delay(100);
+            CaptureControl(insightsWindow, Path.Combine(directory, $"release-forecast-{lang}.png")); insightsWindow.Close();
+            OpenDiagnostics(); await diagnosticsWindow!.ReloadAsync(); await Task.Delay(100);
+            CaptureControl(diagnosticsWindow, Path.Combine(directory, $"release-diagnostics-{lang}.png")); diagnosticsWindow.Close();
+            var about = new AboutWindow(preferences, () => { }) { Owner = this };
+            about.Show(); await about.CheckLatestAsync(); await Task.Delay(120);
+            CaptureControl(about, Path.Combine(directory, $"release-about-{lang}.png")); about.Close();
+            var update = new UpdateWindow(preferences) { Owner = this };
+            update.Show(); await Task.Delay(120);
+            CaptureControl(update, Path.Combine(directory, $"release-updates-{lang}.png")); update.Close();
+            var naming = new TaskNameDialog(this); naming.Show(); await Task.Delay(120);
+            CaptureControl(naming, Path.Combine(directory, $"release-task-name-{lang}.png")); naming.Close();
+
             OpenSkins(this, new RoutedEventArgs()); await Task.Delay(150);
             CaptureControl(settingsWindow!, Path.Combine(directory, $"release-skins-{lang}.png")); settingsWindow!.Close();
         }

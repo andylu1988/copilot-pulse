@@ -77,6 +77,25 @@ public partial class MainWindow
         }
         try
         {
+            // Exercise every palette with the translucent chrome over its own
+            // animation. UI heartbeat and CPU time complement the page-switch test.
+            foreach (var palette in SkinTheme.Catalog)
+            {
+                preferences.SkinId = palette.Id;
+                var switchWatch = System.Diagnostics.Stopwatch.StartNew();
+                SkinEdited();
+                await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                double switchMs = switchWatch.Elapsed.TotalMilliseconds;
+                using var process = System.Diagnostics.Process.GetCurrentProcess();
+                var cpuBefore = process.TotalProcessorTime;
+                double gapBefore = maximumGap;
+                maximumGap = 0; last = clock.Elapsed.TotalMilliseconds;
+                await Task.Delay(2000);
+                process.Refresh();
+                File.AppendAllText(log, $"Skin {palette.Id}: switch {switchMs:0.0} ms; 2s CPU {(process.TotalProcessorTime - cpuBefore).TotalMilliseconds:0} ms; maximum UI dispatch gap {maximumGap:0.0} ms\n");
+                maximumGap = Math.Max(gapBefore, maximumGap);
+            }
+            preferences.SkinId = "matrix"; SkinEdited();
             for (int pass = 0; pass < 3; pass++)
             {
                 await Measure($"History {pass + 1}", () => OpenHistory(this, new RoutedEventArgs()), () => historyWindow!.ReloadAsync());

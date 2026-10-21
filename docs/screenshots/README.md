@@ -61,3 +61,9 @@
 本月累计 $1,234.56，记录起点首笔 $623.51，记录后增量 $611.05；示例覆盖多天，不是一次真实任务。单次任务观察需等待基线，再运行任务并等源站更新，包含同期其他用量，不是精确账单。
 
 Actual released v1.12.0 WPF controls rendered in isolated Matrix demo mode; surrounding captions are editorial. All data is synthetic. The multi-day sample illustrates the arithmetic, not a real task cost. Task observations depend on source latency and may include concurrent usage.
+
+## v1.13.1 Matrix 截图 / Matrix screenshots
+
+`v1.13.1/` 包含中英文主界面、任务计量、计量记录、迷你、预估、警告、历史交互、皮肤设置、关于、在线更新、任务命名与独立诊断。来自实际发布代码的隔离 review 入口，不连接真实数据、不读取用户登录、不改真实历史。全部为 Matrix 皮肤，截图标记为虚构示例。预估风险、达到阈值等图为独立验证场景；发布主截图月累计为 $1,234.56，完整本月净增长同为 $1,234.56。静态图片显示动画一帧。
+
+Actual WPF controls rendered with synthetic accounts, amounts and tasks. All new screenshots use Matrix. Forecast scenario images test independent cases; no real user sessions or records are used. Notification illustrations retained from earlier versions are labeled separately.

@@ -36,17 +36,18 @@ internal sealed class UpdateWindow : Window
         Title = UiText.T("Copilot Pulse · 在线更新", "Copilot Pulse · Online updates"); Icon = BrandIcon.Window;
         Width = 510; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SetResourceReference(BackgroundProperty, "SkinPanel"); SetResourceReference(ForegroundProperty, "SkinText");
-        var body = new StackPanel { Margin = new Thickness(24) }; Content = body;
+        var body = new StackPanel { Margin = new Thickness(24) }; _ = new UtilitySkin(this, body);
         body.Children.Add(new TextBlock { Text = UiText.T("在线更新", "Online updates"), FontSize = 24, FontWeight = FontWeights.SemiBold });
         body.Children.Add(new TextBlock { Text = UiText.T($"当前版本 {UpdatePolicy.Current} · Windows x64", $"Current version {UpdatePolicy.Current} · Windows x64"), Margin = new Thickness(0,10,0,12) });
-        repo = new ComboBox { ItemsSource = new[] { "andylu1988/copilot-pulse", "andylu_microsoft/copilot-pulse" }, SelectedIndex = preferences.UpdateRepository == "andylu_microsoft/copilot-pulse" ? 1 : 0, Background = Brushes.White, Foreground = Brushes.Black, MinHeight = 30 };
+        repo = new ComboBox { ItemsSource = new[] { "andylu1988/copilot-pulse", "andylu_microsoft/copilot-pulse" }, SelectedIndex = preferences.UpdateRepository == "andylu_microsoft/copilot-pulse" ? 1 : 0, MinHeight = 38, Padding = new Thickness(10,8,10,8) };
+        repo.SetResourceReference(FrameworkElement.StyleProperty, "SkinComboBoxStyle");
         body.Children.Add(repo);
         repo.SelectionChanged += (_, _) => { preferences.UpdateRepository = (string)repo.SelectedItem; if (!App.Demo && !App.Smoke) Store.Write("preferences.json", preferences); release = null; installer = null; install.IsEnabled = true; status.Text = UiText.T("请选择检查更新。", "Select Check for updates."); };
         body.Children.Add(status);
         status.Text = UiText.T("默认从个人公开仓库检查正式版本，无需登录 GitHub。EMU 私有仓库需要有权限的 GitHub CLI 账户。", "Checks stable releases from the public personal repository without GitHub sign-in. The private EMU mirror needs an authorized GitHub CLI account.");
         var buttons = new WrapPanel(); body.Children.Add(buttons);
         void Add(Button button, string zh, string en) { button.Content = UiText.T(zh,en); button.Padding = new Thickness(10,8,10,8); button.Margin = new Thickness(0,0,6,8); buttons.Children.Add(button); }
-        Add(install,"一键更新并重启","Update and restart"); Add(check,"检查更新","Check for updates");
+        Add(install,"一键更新并重启","Update and restart"); install.FontWeight = FontWeights.SemiBold; install.SetResourceReference(Control.BorderBrushProperty,"SkinAccent"); Add(check,"检查更新","Check for updates");
         var browser = new Button(); Add(browser,"浏览器下载 ↗","Browser download ↗");
         browser.Click += (_, _) => Process.Start(new ProcessStartInfo(UpdatePolicy.ReleasePage(preferences.UpdateRepository)) { UseShellExecute = true });
         body.Children.Add(new TextBlock { Text = UiText.T("每小时检查正式版本，未点击提醒满 48 小时后自动升级。点击“一键更新并重启”后自动检查、下载、校验、安装并重新打开；历史、登录和偏好设置保留。打开更新窗口会取消当前版本的自动安装。", "Checks hourly. Unopened notices install automatically after 48 hours. Update and restart checks, downloads and verifies SHA256, then silently installs and reopens the widget. History, sign-in and preferences are retained. Opening updates cancels automatic installation for the current version."), FontSize = 11, TextWrapping = TextWrapping.Wrap });

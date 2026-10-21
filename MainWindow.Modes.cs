@@ -72,7 +72,7 @@ public partial class MainWindow
         string effective=paused?"paused":status;
         if(effective=="live" && data!=null && DateTimeOffset.Now-data.FetchedAt>TimeSpan.FromSeconds(Math.Max(180,preferences.RefreshSeconds*3+30)))effective="stale";
         FullAmount.Update(data?.Total,effective,data?.FetchedAt);
-        MiniDisplay.Update(preferences.MiniShowRecordDelta ? miniBaselineDelta : data?.Total,effective,data?.FetchedAt,preferences.MiniShowRecordDelta);
+        MiniDisplay.Update(ShowMiniTaskDelta ? miniBaselineDelta : data?.Total,effective,data?.FetchedAt,ShowMiniTaskDelta);
     }
     private void RefreshDisplayEffects()
     {

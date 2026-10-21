@@ -13,6 +13,7 @@ namespace CopilotPulse;
 public partial class MainWindow
 {
     private InsightsWindow? insightsWindow;
+    private DiagnosticsWindow? diagnosticsWindow;
     private System.Windows.Controls.Button? diagnosticEntry;
     private ReminderState reminderState = new();
     private DateTimeOffset remindersDue, samplingWatchStarted = DateTimeOffset.UtcNow;
@@ -32,15 +33,25 @@ public partial class MainWindow
     }
     internal void OpenDiagnosticLogin() => OpenSource(this, new RoutedEventArgs());
     internal void RefreshDiagnosticSource() => RefreshNow(this, new RoutedEventArgs());
+    internal int ForecastRefreshSeconds => preferences.RefreshSeconds;
+    internal Preferences ForecastPreferences => preferences;
     private void OpenUsageForecast(object sender, RoutedEventArgs e) => OpenInsights(1);
     private void OpenInsights(int tab = 0)
     {
-        if (insightsWindow != null) { insightsWindow.SelectTab(tab); insightsWindow.Show(); insightsWindow.Activate(); _ = insightsWindow.ReloadAsync(); return; }
+        if (tab == 2) { OpenDiagnostics(); return; }
+        if (insightsWindow != null) { insightsWindow.Show(); insightsWindow.Activate(); _ = insightsWindow.ReloadAsync(); return; }
         insightsWindow = new InsightsWindow(measurementTasks,
             () => Task.Run<IReadOnlyList<HistoryFrame>>(() => demoHistory ?? history?.ReadAll() ?? Array.Empty<HistoryFrame>()),
             () => data, BuildDiagnosticReport, tab) { Owner = this };
         insightsWindow.Closed += (_, _) => insightsWindow = null;
         insightsWindow.Show();
+    }
+    private void OpenDiagnostics()
+    {
+        if (diagnosticsWindow != null) { diagnosticsWindow.Show(); diagnosticsWindow.Activate(); return; }
+        diagnosticsWindow = new DiagnosticsWindow(BuildDiagnosticReport) { Owner = this };
+        diagnosticsWindow.Closed += (_, _) => diagnosticsWindow = null;
+        diagnosticsWindow.Show();
     }
     private void ToggleSampling()
     {

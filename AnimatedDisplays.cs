@@ -69,7 +69,7 @@ public sealed partial class MoneyReadout : AnimatedDisplay
         if(different || UiText.English)
         {
             string display=amount?.ToString("C2",DisplayArt.Us)??"尚未同步";
-            string caption=RecordedPeriod ? UiText.T("记录区间增量", "Recorded period delta") : UiText.T("本月内部用量", "Monthly internal usage");
+            string caption=RecordedPeriod ? UiText.T("任务计量增量", "Task measurement delta") : UiText.T("本月内部用量", "Monthly internal usage");
             AutomationProperties.SetName(this,caption+" "+display);
             if(Tile)ToolTip=$"{caption}：{display}\n{UiText.T("最近更新", "Last updated")}：{(time.HasValue?time.Value.LocalDateTime.ToString("MM/dd HH:mm:ss"):"—")}\n{StateLabel()}\n{UiText.T("拖动移动 · 双击展开 · 右键设置", "Drag to move · Double-click to expand · Right-click for settings")}";
             InvalidateVisual();
@@ -125,7 +125,7 @@ public sealed partial class MoneyReadout : AnimatedDisplay
         dc.DrawEllipse(DisplayArt.Brush(statusColor),null,new Point(212,14),2.1,2.1);
         DisplayArt.Money(dc,new Rect(15,29,198,43),amount,p,Phase,Pulse,dpi);
         string footer=Preview?"STYLE PREVIEW":state is "live" or "syncing"?"MONTH TO DATE":StateLabel();
-        if(RecordedPeriod) footer=UiText.T("记录区间增量", "RECORDED PERIOD DELTA");
+        if(RecordedPeriod) footer=UiText.T("任务计量增量", "RECORDED PERIOD DELTA");
         dc.DrawText(DisplayArt.Text(footer,7,p.Faint,dpi,"Segoe UI"),new Point(14,81));
         if(p.Id=="terminal" && MotionAllowed && Phase%1.8<.9)dc.DrawRectangle(DisplayArt.Brush(p.Accent,.7),null,new Rect(192,82,10,2));
         dc.Pop();dc.Pop();

@@ -31,19 +31,22 @@ public partial class TasksWindow : Window
         this.tasks = tasks; this.load = load; this.health = health; this.start = start; this.end = end; this.rename = rename;
         MaxHeight = SystemParameters.WorkArea.Height - 30;
         SkinTheme.ApplySurface(TaskSurface, TaskShade, true);
+        Resources[typeof(Button)] = new Style(typeof(Button), (Style)FindResource("GlassButtonStyle"));
+        GlassChrome.SetSource(this, TaskSurface);
+        UtilitySkin.ApplyTitleBar(this);
         ApplyLanguage();
         Loaded += async (_, _) => await ReloadAsync(); timer.Tick += async (_, _) => await ReloadAsync(); timer.Start();
         Closed += (_, _) => { closed = true; timer.Stop(); };
     }
     internal void ApplyLanguage()
     {
-        Title = UiText.T("Copilot Pulse · 任务计量", "Copilot Pulse · Task measurements");
-        Heading.Text = UiText.T("任务计量", "Task measurements");
+        Title = UiText.T("Copilot Pulse · 计量记录", "Copilot Pulse · Measurement history");
+        Heading.Text = UiText.T("计量记录", "Measurement history");
         Subtitle.Text = UiText.T("为单次任务记录观测花费 · 结束后保留，随时回看", "Observe usage for a task · Saved after ending, ready to revisit");
         NameColumn.Header = UiText.T("任务", "Task"); StartColumn.Header = UiText.T("开始 · 本机时间", "Start · Local"); EndColumn.Header = UiText.T("结束 · 本机时间", "End · Local"); DeltaColumn.Header = "Δ USD"; SamplesColumn.Header = UiText.T("采样数", "Samples");
-        NewButton.Content = UiText.T("＋ 开始任务", "＋ Start task"); RenameButton.Content = UiText.T("保存备注", "Save name"); EndButton.Content = UiText.T("结束并保存", "End & save"); CopyButton.Content = UiText.T("复制摘要", "Copy summary");
+        NewButton.Content = UiText.T("＋ 开始任务计量", "＋ Start measurement"); RenameButton.Content = UiText.T("保存备注", "Save name"); EndButton.Content = UiText.T("结束并保存", "End & save"); CopyButton.Content = UiText.T("复制摘要", "Copy summary");
         ImageButton.Content = UiText.T("导出任务截图…", "Export task image…");
-        ExportButton.Content = UiText.T("导出所选区间…", "Export selected…"); ExportAllButton.Content = UiText.T("导出全部历史…", "Export all history…"); Anonymous.Content = UiText.T("匿名化（推荐）", "Anonymize (recommended)"); DetailsExpander.Header = UiText.T("缺失采样与刷新日志 ▾", "Missing samples & refresh log ▾");
+        ExportButton.Content = UiText.T("导出所选计量…", "Export selected measurement…"); ExportAllButton.Content = UiText.T("导出全部采样与计量…", "Export all samples & measurements…"); Anonymous.Content = UiText.T("匿名化（推荐）", "Anonymize (recommended)"); DetailsExpander.Header = UiText.T("缺失采样与刷新日志 ▾", "Missing samples & refresh log ▾");
         ExportNote.Text = UiText.T("CSV / JSON 包含区间、成功采样和刷新状态。匿名化移除账户和任务名，仍保留时间与金额。增量从首次有效采样起算；页面可能延迟，不等于精确的单任务账单。", "CSV / JSON include tasks, successful samples and refresh states. Anonymization removes accounts and task names; times and amounts remain. Deltas start at the first valid sample; delayed source readings are not exact per-task billing.");
     }
     internal async Task ReloadAsync()
@@ -61,7 +64,7 @@ public partial class TasksWindow : Window
             }).ToList();
             TaskList.ItemsSource = rows;
             TaskList.SelectedItem = rows.FirstOrDefault(r => r.Id == id) ?? rows.FirstOrDefault();
-            EmptyLabel.Text = rows.Count == 0 ? UiText.T("暂无任务。点击“开始任务”，输入名称后开始采样。", "No tasks yet. Start a task and give it a name.") : UiText.T($"{rows.Count} 个已保存任务 · 选择一行查看", $"{rows.Count} saved tasks · Select a row to inspect");
+            EmptyLabel.Text = rows.Count == 0 ? UiText.T("暂无任务。点击“开始任务计量”，输入名称后开始采样。", "No tasks yet. Start a task and give it a name.") : UiText.T($"{rows.Count} 个已保存任务 · 选择一行查看", $"{rows.Count} saved tasks · Select a row to inspect");
             NewButton.IsEnabled = !tasks.Tasks.Any(t => t.EndUtc == null);
             var h = health(); HealthLabel.Text = h.Label; HealthHint.Text = h.Hint;
             ShowSelected();
@@ -133,13 +136,13 @@ internal sealed class TaskNameDialog : Window
     {
         Owner = owner; Title = UiText.T("开始任务计量", "Start task measurement"); Width = 450; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner; Icon = BrandIcon.Window;
         SetResourceReference(BackgroundProperty, "SkinPanel"); SetResourceReference(ForegroundProperty, "SkinText");
-        var panel = new StackPanel { Margin = new Thickness(22) }; Content = panel;
+        var panel = new StackPanel { Margin = new Thickness(22) }; _ = new UtilitySkin(this, panel);
         panel.Children.Add(new TextBlock { Text = UiText.T("给这次任务起个名字", "Name this task"), FontSize = 19 });
         panel.Children.Add(new TextBlock { Text = UiText.T("例如：修复登录 Bug / 准备客户方案 / 代码审查", "For example: Login fix / Customer proposal / Code review"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 12) });
-        input = new TextBox { MaxLength = 100, FontSize = 14, Padding = new Thickness(10), Text = UiText.T("未命名任务", "Untitled task") }; input.SetResourceReference(BackgroundProperty, "SkinChart"); input.SetResourceReference(ForegroundProperty, "SkinText"); input.SetResourceReference(TextBox.CaretBrushProperty, "SkinAccent"); panel.Children.Add(input);
+        input = new TextBox { MaxLength = 100, FontSize = 14, Padding = new Thickness(10), Text = UiText.T("未命名任务", "Untitled task") }; input.SetResourceReference(StyleProperty, "GlassTextBoxStyle"); panel.Children.Add(input);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 15, 0, 0) };
         var cancel = new Button { Content = UiText.T("取消", "Cancel"), IsCancel = true }; buttons.Children.Add(cancel);
-        var ok = new Button { Content = UiText.T("开始记录", "Start recording"), IsDefault = true, Margin = new Thickness(8, 0, 0, 0) }; ok.SetResourceReference(BackgroundProperty, "SkinHover"); ok.Click += (_, _) => DialogResult = true; buttons.Children.Add(ok); panel.Children.Add(buttons);
+        var ok = new Button { Content = UiText.T("开始计量", "Start measurement"), IsDefault = true, Margin = new Thickness(8, 0, 0, 0) }; ok.SetResourceReference(BackgroundProperty, "SkinHover"); ok.Click += (_, _) => DialogResult = true; buttons.Children.Add(ok); panel.Children.Add(buttons);
         Loaded += (_, _) => { input.Focus(); input.SelectAll(); };
     }
 }

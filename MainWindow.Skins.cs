@@ -40,7 +40,7 @@ public partial class MainWindow
         RefreshDisplayEffects();
         historyWindow?.ApplySkin(paletteChanged);
         recordingWindow?.ApplySkin(paletteChanged);
-        insightsWindow?.ApplySkin();
+        insightsWindow?.ApplySkin(); diagnosticsWindow?.ApplySkin();
         settingsWindow?.ApplySkin();
         if (tray?.ContextMenuStrip is { } menu)
         {

@@ -32,19 +32,51 @@
           <Border CornerRadius="9" BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" ClipToBounds="True">
             <Grid>
               <local:GlassBackdrop/>
-              <Border Background="{TemplateBinding Background}" Opacity="0.42" CornerRadius="8"/>
-              <Border x:Name="GlassTint" CornerRadius="8"><Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#2EFFFFFF"/><GradientStop Color="#0CFFFFFF" Offset="0.45"/><GradientStop Color="#35101A20" Offset="1"/></LinearGradientBrush></Border.Background></Border>
+              <Border Background="{TemplateBinding Background}" Opacity="0.16" CornerRadius="8"/>
+              <Border x:Name="GlassTint" CornerRadius="8"><Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#18FFFFFF"/><GradientStop Color="#03FFFFFF" Offset="0.45"/><GradientStop Color="#18081014" Offset="1"/></LinearGradientBrush></Border.Background></Border>
               <Border Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/></Border>
             </Grid>
           </Border>
           <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="GlassTint" Property="Background" Value="#35FFFFFF"/></Trigger>
-            <Trigger Property="IsPressed" Value="True"><Setter TargetName="GlassTint" Property="Background" Value="#45212D38"/></Trigger>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="GlassTint" Property="Background" Value="#20FFFFFF"/></Trigger>
+            <Trigger Property="IsPressed" Value="True"><Setter TargetName="GlassTint" Property="Background" Value="#30212D38"/></Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource SkinAccent}"/></Trigger>
             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value></Setter>
+    </Style>
+    <Style x:Key="GlassTextBoxStyle" TargetType="TextBox">
+      <Setter Property="Background" Value="#60050D10"/><Setter Property="Foreground" Value="{DynamicResource SkinText}"/><Setter Property="CaretBrush" Value="{DynamicResource SkinAccent}"/><Setter Property="BorderBrush" Value="{DynamicResource SkinEdge}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="10,8"/><Setter Property="FontSize" Value="13"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+        <Border x:Name="InputBorder" CornerRadius="9" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}"><Grid><local:GlassBackdrop/><ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/></Grid></Border>
+        <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource SkinAccent}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="SkinComboBoxStyle" TargetType="ComboBox">
+      <Setter Property="Foreground" Value="{DynamicResource SkinText}"/>
+      <Setter Property="Background" Value="{DynamicResource SkinChart}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SkinEdge}"/>
+      <Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource SkinText}"/>
+        <Setter Property="Padding" Value="12,9"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+          <Border x:Name="Item" Background="Transparent" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+          <ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="{DynamicResource SkinHover}"/></Trigger></ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+      </Style></Setter.Value></Setter>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+        <Grid>
+          <ToggleButton Focusable="False" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+            <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{DynamicResource SkinChart}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="8"><Grid><local:GlassBackdrop/><TextBlock Text="⌄" Foreground="{DynamicResource SkinText}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"/></Grid></Border></ControlTemplate></ToggleButton.Template>
+          </ToggleButton>
+          <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" Margin="12,8,30,8" VerticalAlignment="Center" IsHitTestVisible="False"/>
+          <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+            <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Background="{DynamicResource SkinPanel}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="8" Padding="4"><ScrollViewer><ItemsPresenter/></ScrollViewer></Border>
+          </Popup>
+        </Grid>
+        <ControlTemplate.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI"/></Style>
     </ResourceDictionary>
