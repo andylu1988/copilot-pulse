@@ -28,6 +28,9 @@ public static class SettingsPolicy
         p.ResetReminderHours = Math.Clamp(p.ResetReminderHours, 1, 168);
         p.SamplingReminderMinutes = Math.Clamp(p.SamplingReminderMinutes, 2, 120);
         p.MiniReturnMode = p.MiniReturnMode is "compact" or "full" ? p.MiniReturnMode : p.Compact ? "compact" : "full";
+        p.MiniHistoryRange = string.IsNullOrWhiteSpace(p.MiniHistoryRange) ? "" : HistoryRanges.Normalize(p.MiniHistoryRange);
+        if (p.MiniShowRecordDelta) p.MiniHistoryRange = "";
+        if (p.MiniSecondaryMetric is not ("auto" or "total" or "task" or "today" or "24h" or "7d" or "month")) p.MiniSecondaryMetric = "auto";
         if (!string.IsNullOrWhiteSpace(p.MeasurementBaselineUtc))
         {
             if (DateTimeOffset.TryParse(p.MeasurementBaselineUtc, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal, out var baseline)) p.MeasurementBaselineUtc = baseline.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);

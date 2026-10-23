@@ -21,9 +21,11 @@ public partial class MainWindow
     private string? stagedInstaller;
     private bool checkingUpdate, freshUpdateCheck, installingUpdate;
 
+    private static bool IsLocalWorkspacePreview => typeof(App).Assembly.GetName().Version == new Version(1, 14, 0, 1);
+
     private void StartAutomaticUpdates()
     {
-        if (App.Demo || App.Smoke) return;
+        if (App.Demo || App.Smoke || IsLocalWorkspacePreview) return; // Local preview must not install production releases.
         updateState = Store.Read<AutoUpdateState>("update-state.json") ?? new();
         if (!Version.TryParse(updateState.Version, out var pending) || pending <= UpdatePolicy.Current)
         {
@@ -98,6 +100,7 @@ public partial class MainWindow
     private void NewVersionClick(object sender, RoutedEventArgs e) => OpenUpdates();
     internal void OpenUpdates()
     {
+        if (IsLocalWorkspacePreview) { MessageBox.Show(this, UiText.T("当前是本地测试版。在线更新已暂停，请完成本地测试后再更新。", "This is a local preview. Online updates are paused until local testing is complete."), "Copilot Pulse"); return; }
         if (installingUpdate) return;
         if (updateWindow != null) { updateWindow.Activate(); return; }
         if (updateState.FirstSeenUtc.HasValue) { updateState.Acknowledged = true; if (!App.Demo && !App.Smoke) Store.Write("update-state.json", updateState); }
@@ -163,6 +166,17 @@ public partial class MainWindow
                     ? UiText.T("任务增量 · 等待有效采样", "Task delta · Waiting for valid samples")
                     : UiText.T("任务计量增量", "Measured task delta");
             mini = warningActive ? $"⚠ {recorded}" : recorded;
+        }
+        if (ShowMiniHistoryDelta) mini = MiniMetricCaption + (miniTrendDelta.HasValue ? UiText.T(" · 观测增量", " · Observed delta") : UiText.T(" · 等待采样", " · Waiting for samples"));
+        if (preferences.MiniDualMetrics)
+        {
+            string FormatDelta(decimal? value) => preferences.HideAmounts ? "••••" : value.HasValue ? HistoryChart.Signed(value.Value) : "—";
+            string key = EffectiveMiniSecondaryMetric;
+            string secondary = key == "total" ? UiText.T("本月 ", "Month ") + (data == null ? "—" : Money(data.Total))
+                : key == "task" ? UiText.T("任务 Δ ", "Task Δ ") + FormatDelta(miniBaselineDelta)
+                : UiText.Range(key) + " Δ " + FormatDelta(key == "today" ? miniTodayDelta : miniSecondaryDelta);
+            mini = (warningActive ? "⚠ " : "") + secondary;
+            MiniUsageProgress.FontWeight = FontWeights.SemiBold;
         }
         MiniUsageProgress.Text = mini;
         MiniUsageProgress.ToolTip = text;

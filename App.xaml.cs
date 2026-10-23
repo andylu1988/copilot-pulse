@@ -28,6 +28,7 @@ public partial class App : Application
     public static string? MiniReviewPath { get; private set; }
     public static string? TasksReviewPath { get; private set; }
     public static string? AppearanceReviewPath { get; private set; }
+    public static string? WorkspaceReviewPath { get; private set; }
     public static bool PerformanceReview { get; private set; }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -47,6 +48,8 @@ public partial class App : Application
         if (appearanceReview >= 0 && appearanceReview + 1 < e.Args.Length) { AppearanceReviewPath = Path.GetFullPath(e.Args[appearanceReview + 1]); Demo = true; }
         int performanceReview = Array.IndexOf(e.Args, "--review-performance");
         if (performanceReview >= 0 && performanceReview + 1 < e.Args.Length) { AppearanceReviewPath = Path.GetFullPath(e.Args[performanceReview + 1]); PerformanceReview = true; Demo = true; }
+        int workspaceReview = Array.IndexOf(e.Args, "--review-workspace");
+        if (workspaceReview >= 0 && workspaceReview + 1 < e.Args.Length) { WorkspaceReviewPath = Path.GetFullPath(e.Args[workspaceReview + 1]); Demo = true; }
         int tasksReview = Array.IndexOf(e.Args, "--review-tasks");
         if (tasksReview >= 0 && tasksReview + 1 < e.Args.Length) { TasksReviewPath = Path.GetFullPath(e.Args[tasksReview + 1]); Demo = true; }
         int updateReview = Array.IndexOf(e.Args, "--review-update");
@@ -87,7 +90,7 @@ public partial class App : Application
         {
             if (Demo)
             {
-                string? review = AppearanceReviewPath ?? TasksReviewPath ?? SettingsReviewPath ?? MiniReviewPath ?? SkinReviewPath ?? HistoryReviewPath ?? MenuReviewPath;
+                string? review = WorkspaceReviewPath ?? AppearanceReviewPath ?? TasksReviewPath ?? SettingsReviewPath ?? MiniReviewPath ?? SkinReviewPath ?? HistoryReviewPath ?? MenuReviewPath;
                 if (review != null) { Directory.CreateDirectory(review); File.WriteAllText(Path.Combine(review,"review-error.txt"),args.Exception.ToString()); }
                 args.Handled = true; Shutdown(1); return;
             }

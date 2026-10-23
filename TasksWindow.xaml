@@ -7,7 +7,7 @@
  </Window.Resources>
  <Border x:Name="TaskSurface"><Border x:Name="TaskShade"><Grid>
   <local:Atmosphere IsHitTestVisible="False" Opacity="0.5"/>
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="26,22">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="TaskContent" Margin="26,22">
    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock x:Name="Heading" FontSize="25" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="Subtitle" FontSize="11" Foreground="{DynamicResource SkinMuted}" Margin="0,6,10,0" TextWrapping="Wrap"/></StackPanel><Button x:Name="NewButton" Grid.Column="1" Click="NewTask" VerticalAlignment="Center" Background="{DynamicResource SkinHover}"/></Grid>
    <Border Background="{DynamicResource SkinChart}" BorderBrush="{DynamicResource SkinEdge}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,16,0,12"><StackPanel><TextBlock x:Name="HealthLabel" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SkinAccent}"/><TextBlock x:Name="HealthHint" TextWrapping="Wrap" FontSize="11" Margin="0,5,0,0" Foreground="{DynamicResource SkinMuted}"/></StackPanel></Border>
    <TextBlock x:Name="EmptyLabel" FontSize="12" Margin="0,0,0,8" Foreground="{DynamicResource SkinMuted}"/>

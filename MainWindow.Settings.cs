@@ -16,7 +16,7 @@ public partial class MainWindow
     private void OpenPreferences()
     {
         if (settingsWindow != null) { settingsWindow.Show(); settingsWindow.Activate(); return; }
-        settingsWindow = new SettingsWindow(preferences, ApplySettings, SkinEdited) { Owner = this };
+        settingsWindow = new SettingsWindow(preferences, ApplySettings, SkinEdited, BuildDesktopOptions) { Owner = this };
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         settingsWindow.Show();
     }
@@ -87,6 +87,7 @@ internal sealed partial class SettingsWindow : Window
 {
     private readonly Preferences preferences;
     private readonly Action changed;
+    private readonly Func<Window, UIElement>? desktopOptions;
     private bool building;
     private readonly Action appearanceChanged;
     internal SkinPicker SkinEditor { get; private set; } = null!;
@@ -94,9 +95,9 @@ internal sealed partial class SettingsWindow : Window
     private TextBlock? zoneText, resetText;
     private TextBox? threshold;
     private TextBlock? error;
-    internal SettingsWindow(Preferences preferences, Action changed, Action? appearanceChanged = null)
+    internal SettingsWindow(Preferences preferences, Action changed, Action? appearanceChanged = null, Func<Window, UIElement>? desktopOptions = null)
     {
-        this.preferences = preferences; this.changed = changed; this.appearanceChanged = appearanceChanged ?? changed;
+        this.desktopOptions = desktopOptions; this.preferences = preferences; this.changed = changed; this.appearanceChanged = appearanceChanged ?? changed;
         Title = UiText.T("Copilot Pulse · 设置", "Copilot Pulse · Settings"); Icon = BrandIcon.Window;
         InitializeShell();
         Build();
@@ -168,6 +169,7 @@ internal sealed partial class SettingsWindow : Window
         baselineClear.Click += (_, _) => { preferences.MeasurementBaselineUtc = ""; dateBox.Text = DateTime.Today.ToString("yyyy-MM-dd"); timeBox.Text = "00:00"; baselineError.Foreground = Brushes.OrangeRed; baselineError.Text = UiText.T("基准时间已清除。", "Baseline cleared."); changed(); };
         baselineActions.Children.Add(baselineSave); baselineActions.Children.Add(baselineClear); body.Children.Add(baselineActions);
         Label(UiText.T("格式：YYYY-MM-DD 和 HH:mm。输入的是本机时间；保存后转换为绝对 UTC，时区变化不会改写基准点。自定义区间会持续保存采样记录。", "Format: YYYY-MM-DD and HH:mm. Input is local time and is saved as absolute UTC; timezone changes do not move the baseline. Samples continue to be recorded for the custom period."), 10);
+        if (desktopOptions != null) { Page("desktop", "任务与桌面", "Tasks & desktop", "任务结算、迷你显示与桌面行为", "Settlement, mini metrics and desktop behavior"); body.Children.Add(desktopOptions(this)); }
         Page("updates", "更新与链接", "Updates & links", "版本更新与使用文档", "Version updates and documentation");
         Section("在线更新", "Online updates");
         var updates = new Button { Content = UiText.T("检查新版本 / 下载更新…", "Check version / download update…"), Padding = new Thickness(10,8,10,8), HorizontalAlignment = HorizontalAlignment.Left };

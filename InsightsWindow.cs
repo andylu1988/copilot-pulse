@@ -65,28 +65,46 @@ internal sealed class InsightsWindow : Window
     private readonly StackPanel forecast = new();
     private readonly UtilitySkin skin;
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(60) };
-    private bool closed;
+    private bool closed, activityLoaded;
+    private readonly TabControl pages = new() { Background = Brushes.Transparent, BorderThickness = new Thickness(0) };
+    private readonly StackPanel activity = new();
+    private readonly Func<StackPanel, Window, Task>? loadActivity;
     internal InsightsWindow(TaskRepository? tasks, Func<Task<IReadOnlyList<HistoryFrame>>> load,
-        Func<Consumption?> consumption, Func<Task<DiagnosticReport>> diagnose, int selected = 1)
+        Func<Consumption?> consumption, Func<Task<DiagnosticReport>> diagnose, int selected = 1, Func<StackPanel, Window, Task>? loadActivity = null)
     {
-        this.consumption = consumption;
-        Width = 560; Height = 570; MinWidth = 460; MinHeight = 390;
+        this.consumption = consumption; this.loadActivity = loadActivity;
+        Width = 560; Height = 610; MinWidth = 460; MinHeight = 390;
         MaxHeight = SystemParameters.WorkArea.Height - 24;
         Title = UiText.T("Copilot Pulse · 用量预估", "Copilot Pulse · Usage forecast");
         Icon = BrandIcon.Window; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Resources.Add(typeof(System.Windows.Controls.Primitives.ScrollBar), new Style(typeof(System.Windows.Controls.Primitives.ScrollBar), (Style)FindResource("GlassScrollBarStyle")));
         var root = new DockPanel { Margin = new Thickness(22) };
         var header = new DockPanel { Margin = new Thickness(0,0,0,12) };
-        var close = InsightUi.Button("✕", Close); close.ToolTip = UiText.T("关闭", "Close");
-        close.Width = 36; close.HorizontalAlignment = HorizontalAlignment.Right;
-        DockPanel.SetDock(close, Dock.Right); header.Children.Add(close);
         header.Children.Add(InsightUi.Text(UiText.T("用量预估", "Usage forecast"), 24));
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
-        root.Children.Add(new ScrollViewer { Content = forecast, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        var tabStyle = new Style(typeof(TabItem));
+        tabStyle.Setters.Add(new Setter(Control.ForegroundProperty, SkinTheme.Resolve(SkinTheme.Current.Text)));
+        tabStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 9, 12, 9)));
+        tabStyle.Setters.Add(new Setter(Control.TemplateProperty, System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='TabItem'><Border x:Name='frame' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' Background='{DynamicResource SkinPanel}' BorderBrush='{DynamicResource SkinEdge}' BorderThickness='1' CornerRadius='8,8,0,0' Padding='{TemplateBinding Padding}' Margin='0,0,6,0'><ContentPresenter ContentSource='Header'/></Border><ControlTemplate.Triggers><Trigger Property='IsSelected' Value='True'><Setter TargetName='frame' Property='Background' Value='{DynamicResource SkinChart}'/><Setter Property='FontWeight' Value='SemiBold'/></Trigger></ControlTemplate.Triggers></ControlTemplate>")));
+        pages.Resources[typeof(TabItem)] = tabStyle;
+        pages.Items.Add(new TabItem { Header = UiText.T("用量预估", "Forecast"), Content = new ScrollViewer { Content = forecast, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+        pages.Items.Add(new TabItem { Header = UiText.T("月记录 / 热力图", "Months / Heatmap"), Content = new ScrollViewer { Content = activity, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+        pages.SelectedIndex = selected == 3 ? 1 : 0;
+        pages.SelectionChanged += async (_, e) => { if (e.Source == pages) await EnsureActivityAsync(); };
+        root.Children.Add(pages);
         skin = new UtilitySkin(this, root);
-        Loaded += async (_, _) => { await ReloadAsync(); timer.Start(); };
+        Loaded += async (_, _) => { await ReloadAsync(); await EnsureActivityAsync(); timer.Start(); };
         timer.Tick += async (_, _) => await ReloadAsync();
         Closed += (_, _) => { closed = true; timer.Stop(); };
     }
+    internal void SelectPage(int tab) { pages.SelectedIndex = tab == 3 ? 1 : 0; }
+    private async Task EnsureActivityAsync()
+    {
+        if (closed || !IsVisible || pages.SelectedIndex != 1 || activityLoaded) return;
+        activityLoaded = true;
+        if (loadActivity != null) await loadActivity(activity, this);
+    }
+    internal bool ActivityReadyForReview => activity.Children.Count >= 3;
     internal void ApplySkin() => skin.Apply();
     internal Task ReloadAsync() { if (!closed) RenderForecast(); return Task.CompletedTask; }
     private void RenderForecast() => RenderForecast(consumption(), DateTimeOffset.UtcNow);

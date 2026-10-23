@@ -24,6 +24,7 @@ public partial class TasksWindow : Window
     private IReadOnlyList<SamplingEvent> events = Array.Empty<SamplingEvent>();
     private bool loading, closed;
     private string? editingTaskId;
+    private Button? repeatButton, templateButton;
     private MeasurementTask? Selected => tasks.Tasks.FirstOrDefault(t => t.Id == (TaskList.SelectedItem as TaskRow)?.Id);
     public TasksWindow(TaskRepository tasks, Func<Task<(IReadOnlyList<HistoryFrame>, IReadOnlyList<SamplingEvent>)>> load, Func<(string, string)> health, Action start, Action end, Action<string, string> rename)
     {
@@ -35,6 +36,10 @@ public partial class TasksWindow : Window
         GlassChrome.SetSource(this, TaskSurface);
         UtilitySkin.ApplyTitleBar(this);
         ApplyLanguage();
+        var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
+        actions.Children.Add(repeatButton = InsightUi.Button(UiText.T("再测一次", "Measure again"), () => { if (Selected is {} task && !tasks.Tasks.Any(t => t.EndUtc == null) && Owner is MainWindow main) main.RepeatFromHistory(task.Name); }));
+        actions.Children.Add(templateButton = InsightUi.Button(UiText.T("保存为任务模板", "Save task template"), () => { if (Selected is {} task && Owner is MainWindow main) { main.SaveTaskTemplate(task.Name); Result.Text = UiText.T("任务模板已保存，下次开始计量时可选择。", "Template saved; select it when starting a task."); } }));
+        TaskContent.Children.Insert(5, actions);
         Loaded += async (_, _) => await ReloadAsync(); timer.Tick += async (_, _) => await ReloadAsync(); timer.Start();
         Closed += (_, _) => { closed = true; timer.Stop(); };
     }
@@ -51,7 +56,8 @@ public partial class TasksWindow : Window
     }
     internal async Task ReloadAsync()
     {
-        if (loading || closed) return;
+        if (loading) { while (loading && !closed) await Task.Delay(10); return; }
+        if (closed) return;
         loading = true;
         try
         {
@@ -60,7 +66,7 @@ public partial class TasksWindow : Window
             string? id = (TaskList.SelectedItem as TaskRow)?.Id;
             var rows = tasks.Tasks.OrderByDescending(t => t.StartUtc).Select(t => {
                 var m = SamplingHealth.Measure(t, frames, events, DateTimeOffset.UtcNow);
-                return new TaskRow(t.Id, UiText.TaskName(t.Name), t.StartUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"), t.EndUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? UiText.T("记录中", "Recording"), m.Delta.HasValue ? HistoryChart.Signed(m.Delta.Value) : "—", m.Samples);
+                return new TaskRow(t.Id, UiText.TaskName(t.Name), t.StartUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"), t.EndUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? (t.SettlementRequestedUtc.HasValue ? UiText.T("等待结算", "Settling") : UiText.T("记录中", "Recording")), m.Delta.HasValue ? HistoryChart.Signed(m.Delta.Value) : "—", m.Samples);
             }).ToList();
             TaskList.ItemsSource = rows;
             TaskList.SelectedItem = rows.FirstOrDefault(r => r.Id == id) ?? rows.FirstOrDefault();
@@ -72,10 +78,13 @@ public partial class TasksWindow : Window
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Result.Text = UiText.T("读取失败，原始记录已保留。请检查磁盘或权限。", "Could not read data. Original records retained; check disk and permissions."); }
         finally { loading = false; }
     }
+    internal void TaskListForReview(string id) { TaskList.SelectedItem = TaskList.Items.Cast<TaskRow>().Single(r => r.Id == id); }
     private void SelectionChanged(object sender, SelectionChangedEventArgs e) { if (!loading) ShowSelected(); }
     private void ShowSelected()
     {
         var task = Selected;
+        if (repeatButton != null) repeatButton.IsEnabled = task != null && !tasks.Tasks.Any(t => t.EndUtc == null);
+        if (templateButton != null) templateButton.IsEnabled = task != null;
         ImageButton.IsEnabled = RenameButton.IsEnabled = CopyButton.IsEnabled = ExportButton.IsEnabled = task != null;
         EndButton.IsEnabled = task != null && task.EndUtc == null;
         if (task == null) { TaskName.Text = ""; SelectionSummary.Text = ""; SelectionHealth.Text = ""; SamplingDetails.Text = ""; TaskChart.SetData(Array.Empty<HistoryPoint>()); return; }
@@ -87,11 +96,19 @@ public partial class TasksWindow : Window
         SelectionHealth.Text = UiText.T($"估计缺失 {m.Gaps.Sum(g => (long)g.EstimatedMissing)} 次 · 失败刷新 {m.FailedAttempts} 次 · 重试 {m.RetryAttempts} 次 · 最近成功 {m.LastSuccess?.ToLocalTime().ToString("MM/dd HH:mm:ss") ?? "—"}", $"~{m.Gaps.Sum(g => (long)g.EstimatedMissing)} missing · {m.FailedAttempts} failed refreshes · {m.RetryAttempts} retries · Last success {m.LastSuccess?.ToLocalTime().ToString("MM/dd HH:mm:ss") ?? "—"}");
         var subset = frames.Where(f => f.Time >= task.StartUtc && f.Time <= (task.EndUtc ?? now)).ToList();
         TaskChart.Accent = SkinTheme.Current.Accent;
+        TaskChart.SetMarkers(task.Markers ?? new());
         TaskChart.SetData(m.Delta.HasValue ? HistoryMath.RecordedSeries(subset, null) : Array.Empty<HistoryPoint>(), from: task.StartUtc, until: task.EndUtc ?? now);
         var details = m.Gaps.Select(g => UiText.T($"缺失区间 {g.From.ToLocalTime():MM/dd HH:mm:ss} → {g.Until.ToLocalTime():MM/dd HH:mm:ss} · 约 {g.EstimatedMissing} 次", $"Gap {g.From.ToLocalTime():MM/dd HH:mm:ss} → {g.Until.ToLocalTime():MM/dd HH:mm:ss} · ~{g.EstimatedMissing} samples"));
-        SamplingDetails.Text = string.Join("\n", details.Concat(events.Where(e => e.Time >= task.StartUtc && e.Time <= (task.EndUtc ?? now)).TakeLast(100).Select(e => $"{e.Time.ToLocalTime():MM/dd HH:mm:ss}  {e.State}  ({e.Cadence}s)")));
+        SamplingDetails.Text = string.Join("\n", (task.Markers ?? new()).Select(m => $"{m.TimeUtc.ToLocalTime():MM/dd HH:mm:ss}  ▸ {m.Name}").Concat(new[] { UiText.T("结算状态：", "Settlement: ") + SettlementText(task) }).Concat(details).Concat(events.Where(e => e.Time >= task.StartUtc && e.Time <= (task.EndUtc ?? now)).TakeLast(100).Select(e => $"{e.Time.ToLocalTime():MM/dd HH:mm:ss}  {e.State}  ({e.Cadence}s)")));
         if (SamplingDetails.Text.Length == 0) SamplingDetails.Text = UiText.T("无缺失标记或刷新事件。旧历史没有刷新日志。", "No gaps or refresh events. Older history has no refresh log.");
     }
+    private static string SettlementText(MeasurementTask task) => task.SettlementResult switch
+    {
+        "observed" => UiText.T("已获得 3 次后续采样；并行活动仍可能计入。", "3 subsequent samples received; parallel activity may still count."),
+        "timeout" => UiText.T("等待超时，最终增量未确认；仅包含已观测读数。", "Timed out: final delta unconfirmed; observed readings only."),
+        "manual" => UiText.T("手动结束，后续延迟用量未计入。", "Ended manually; later delayed usage is excluded."),
+        _ => task.SettlementRequestedUtc.HasValue ? UiText.T($"等待数据更新 {task.SettlementSamples}/3（最多 10 分钟）", $"Waiting for source {task.SettlementSamples}/3 (up to 10 min)") : UiText.T("计量中", "Recording")
+    };
     private async void NewTask(object sender, RoutedEventArgs e) { start(); await ReloadAsync(); }
     private async void EndTask(object sender, RoutedEventArgs e) { if (Selected?.EndUtc == null) end(); await ReloadAsync(); }
     private async void Rename(object sender, RoutedEventArgs e) { if (Selected is { } t) { rename(t.Id, TaskName.Text); TaskList.Focus(); await ReloadAsync(); } }
@@ -130,19 +147,38 @@ public partial class TasksWindow : Window
 
 internal sealed class TaskNameDialog : Window
 {
+    internal StackPanel DialogBody { get; private set; } = null!;
     private readonly TextBox input;
     public string TaskName => TaskRepository.CleanName(input.Text);
-    public TaskNameDialog(Window owner)
+    private readonly CheckBox save = new();
+    public bool SaveTemplate => save.IsChecked == true;
+    public TaskNameDialog(Window owner, IEnumerable<string>? templates = null, string? title = null)
     {
         Owner = owner; Title = UiText.T("开始任务计量", "Start task measurement"); Width = 450; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner; Icon = BrandIcon.Window;
         SetResourceReference(BackgroundProperty, "SkinPanel"); SetResourceReference(ForegroundProperty, "SkinText");
-        var panel = new StackPanel { Margin = new Thickness(22) }; _ = new UtilitySkin(this, panel);
+        var panel = new StackPanel { Margin = new Thickness(22) }; DialogBody = panel; _ = new UtilitySkin(this, panel);
         panel.Children.Add(new TextBlock { Text = UiText.T("给这次任务起个名字", "Name this task"), FontSize = 19 });
         panel.Children.Add(new TextBlock { Text = UiText.T("例如：修复登录 Bug / 准备客户方案 / 代码审查", "For example: Login fix / Customer proposal / Code review"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 12) });
         input = new TextBox { MaxLength = 100, FontSize = 14, Padding = new Thickness(10), Text = UiText.T("未命名任务", "Untitled task") }; input.SetResourceReference(StyleProperty, "GlassTextBoxStyle"); panel.Children.Add(input);
+        if (title != null) { Title = title; input.Text = ""; ((TextBlock)panel.Children[0]).Text = title; ((TextBlock)panel.Children[1]).Text = UiText.T("标记当前阶段，例如：开始跑测试 / 切换模型。仅记录时间备注。", "Mark a stage, e.g. Run tests / Switch model. This is a timestamped note only."); }
+        if (templates != null)
+        {
+            var available = templates.ToArray();
+            if (available.Length > 0)
+            {
+                panel.Children.Add(new TextBlock { Text = UiText.T("选择常用任务模板（可选）", "Choose a task template (optional)"), Margin = new Thickness(0, 12, 0, 4) });
+                var choices = new ComboBox { ItemsSource = available, Margin = new Thickness(0, 0, 0, 8), MinHeight = 30 };
+                choices.SetResourceReference(StyleProperty, "SkinComboBoxStyle");
+                choices.SelectionChanged += (_, _) => { if (choices.SelectedItem is string name) input.Text = name; };
+                panel.Children.Add(choices);
+            }
+            save.Content = UiText.T("保存为常用任务模板", "Save as task template");
+            save.SetResourceReference(ForegroundProperty, "SkinText");
+            save.Margin = new Thickness(0, 10, 0, 0); panel.Children.Add(save);
+        }
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 15, 0, 0) };
         var cancel = new Button { Content = UiText.T("取消", "Cancel"), IsCancel = true }; buttons.Children.Add(cancel);
-        var ok = new Button { Content = UiText.T("开始计量", "Start measurement"), IsDefault = true, Margin = new Thickness(8, 0, 0, 0) }; ok.SetResourceReference(BackgroundProperty, "SkinHover"); ok.Click += (_, _) => DialogResult = true; buttons.Children.Add(ok); panel.Children.Add(buttons);
+        var ok = new Button { Content = title == null ? UiText.T("开始计量", "Start measurement") : UiText.T("添加标记", "Add marker"), IsDefault = true, Margin = new Thickness(8, 0, 0, 0) }; ok.SetResourceReference(BackgroundProperty, "SkinHover"); ok.Click += (_, _) => DialogResult = true; buttons.Children.Add(ok); panel.Children.Add(buttons);
         Loaded += (_, _) => { input.Focus(); input.SelectAll(); };
     }
 }

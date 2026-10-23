@@ -67,6 +67,18 @@ public sealed class Preferences
     public string MeasurementBaselineUtc { get; set; } = "";
     public string MiniReturnMode { get; set; } = "";
     public bool MiniShowRecordDelta { get; set; }
+    public string MiniHistoryRange { get; set; } = "";
+    public bool MiniDualMetrics { get; set; } = true;
+    public string MiniSecondaryMetric { get; set; } = "auto";
+    public bool DelayedSettlement { get; set; } = true;
+    public List<string> TaskTemplates { get; set; } = new();
+    public bool HideAmounts { get; set; }
+    public bool GrowthPulse { get; set; } = true;
+    public bool DesktopLocked { get; set; }
+    public bool EdgeSnap { get; set; } = true;
+    public bool EdgeTuck { get; set; }
+    public bool HideForFullscreen { get; set; }
+    public string LastSeenVersion { get; set; } = "";
     public double Left { get; set; } = -1;
     public double Top { get; set; } = -1;
 }

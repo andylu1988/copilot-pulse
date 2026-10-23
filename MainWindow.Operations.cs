@@ -36,13 +36,15 @@ public partial class MainWindow
     internal int ForecastRefreshSeconds => preferences.RefreshSeconds;
     internal Preferences ForecastPreferences => preferences;
     private void OpenUsageForecast(object sender, RoutedEventArgs e) => OpenInsights(1);
+    private void OpenMonthlyActivity(object sender, RoutedEventArgs e) => OpenInsights(3);
     private void OpenInsights(int tab = 0)
     {
         if (tab == 2) { OpenDiagnostics(); return; }
-        if (insightsWindow != null) { insightsWindow.Show(); insightsWindow.Activate(); _ = insightsWindow.ReloadAsync(); return; }
+        if (AmountDetailsHidden()) return;
+        if (insightsWindow != null) { insightsWindow.Show(); insightsWindow.Activate(); insightsWindow.SelectPage(tab); _ = insightsWindow.ReloadAsync(); return; }
         insightsWindow = new InsightsWindow(measurementTasks,
             () => Task.Run<IReadOnlyList<HistoryFrame>>(() => demoHistory ?? history?.ReadAll() ?? Array.Empty<HistoryFrame>()),
-            () => data, BuildDiagnosticReport, tab) { Owner = this };
+            () => data, BuildDiagnosticReport, tab, LoadActivityAsync) { Owner = this };
         insightsWindow.Closed += (_, _) => insightsWindow = null;
         insightsWindow.Show();
     }
@@ -65,10 +67,12 @@ public partial class MainWindow
     private void ConfigureHotkeys()
     {
         ReleaseHotkeys();
-        if (!preferences.GlobalHotkeys || App.Demo || App.Smoke || !IsLoaded) { hotkeyStatus = ""; return; }
+        if (App.Demo || App.Smoke || !IsLoaded) { hotkeyStatus = ""; return; }
         var handle = new WindowInteropHelper(this).Handle;
         hotkeySource = HwndSource.FromHwnd(handle); hotkeySource?.AddHook(HotkeyMessage);
         var failed = new List<string>();
+        if (RegisterHotKey(handle, 4105, 0x4003, 0x50)) registeredHotkeys.Add(4105);
+        if (!preferences.GlobalHotkeys) return;
         foreach (var pair in new[] { (4101, 0x54, "Ctrl+Alt+T"), (4102, 0x4D, "Ctrl+Alt+M"), (4103, 0x52, "Ctrl+Alt+R"), (4104, 0x48, "Ctrl+Alt+H") })
             if (RegisterHotKey(handle, pair.Item1, 0x4003, (uint)pair.Item2)) registeredHotkeys.Add(pair.Item1); else failed.Add(pair.Item3);
         hotkeyStatus = failed.Count == 0 ? "OK" : string.Join(", ", failed);
@@ -86,7 +90,8 @@ public partial class MainWindow
         int id = wParam.ToInt32(); if (!registeredHotkeys.Contains(id)) return IntPtr.Zero;
         handled = true;
         Dispatcher.BeginInvoke(new Action(() => {
-            if (id == 4101) { Show(); Activate(); ToggleRecordPoint(this, new RoutedEventArgs()); }
+            if (id == 4105) RestoreDesktopInteraction();
+            else if (id == 4101) { Show(); Activate(); ToggleRecordPoint(this, new RoutedEventArgs()); }
             else if (id == 4102) SetDisplayMode(preferences.DisplayMode == "mini" ? preferences.MiniReturnMode : "mini");
             else if (id == 4103) RefreshNow(this, new RoutedEventArgs());
             else if (id == 4104) { Show(); Activate(); OpenTasks(this, new RoutedEventArgs()); }

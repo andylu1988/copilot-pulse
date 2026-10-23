@@ -32,6 +32,25 @@ internal static class TaskChecks
         Directory.CreateDirectory(locked);
         try { blocked.Start("Should not persist", now, 60); check("failed write does not mutate task memory", false); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { check("failed write does not mutate task memory", blocked.Tasks.Count == 0); }
 
+        string contendedPath = Path.Combine(directory, "contended-tasks.json");
+        var contended = new TaskRepository(contendedPath);
+        var saved = contended.Start("Before", now, 60);
+        using (var held = new FileStream(contendedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var release = new Thread(() => { Thread.Sleep(70); held.Dispose(); });
+            release.Start();
+            try { contended.Rename(saved.Id, "After"); }
+            finally { release.Join(); }
+        }
+        check("task save recovers after temporary destination lock", new TaskRepository(contendedPath).Tasks.Single().Name == "After");
+        byte[] prior = File.ReadAllBytes(contendedPath);
+        using (var held = new FileStream(contendedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            try { contended.Rename(saved.Id, "Must not persist"); check("persistent lock preserves task state", false); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            { check("persistent lock preserves task state", contended.Tasks.Single().Name == "After" && prior.SequenceEqual(File.ReadAllBytes(contendedPath))); }
+        }
+
         HistoryFrame Frame(int seconds, decimal amount) => HistoryFrame.From(new Consumption { Ok = true, FetchedAt = now.AddSeconds(seconds), Total = amount, Accounts = new() { new Account { Name = "Private Enterprise", Login = "secret-corp-account", Cost = amount } } }, 60);
         var frames = new[] { Frame(-60, 90), Frame(0, 100), Frame(60, 101), Frame(240, 107), Frame(300, 109) };
         var task = new MeasurementTask { Name = "Private task name", StartUtc = now, EndUtc = now.AddMinutes(4), Cadence = 60 };

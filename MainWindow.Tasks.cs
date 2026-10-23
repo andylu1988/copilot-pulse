@@ -76,16 +76,67 @@ public partial class MainWindow
         if (active)
         {
             var task = measurementTasks.Tasks.SingleOrDefault(t => t.EndUtc == null);
+            if (task != null && preferences.DelayedSettlement && !App.Demo)
+            {
+                if (task.SettlementRequestedUtc.HasValue) FinishTaskImmediately();
+                else if (TryTaskWrite(() => measurementTasks.RequestSettlement(task.Id, DateTimeOffset.UtcNow)))
+                { _ = RefreshMiniHistoryAsync(); if (monitor != null) _ = monitor.RefreshAsync(); }
+                return false;
+            }
             return task == null || TryTaskWrite(() => measurementTasks.End(task.Id, DateTimeOffset.UtcNow));
         }
         string name = UiText.T("未命名任务", "Untitled task");
         if (!App.Demo || App.TasksReviewPath == null && App.HistoryReviewPath == null)
         {
-            var dialog = new TaskNameDialog(this);
+            var dialog = new TaskNameDialog(this, preferences.TaskTemplates);
             if (dialog.ShowDialog() != true) return false;
             name = dialog.TaskName;
+            if (dialog.SaveTemplate && !preferences.TaskTemplates.Contains(name)) { preferences.TaskTemplates.Add(name); SavePreferences(); }
         }
         return TryTaskWrite(() => measurementTasks.Start(name, DateTimeOffset.UtcNow, preferences.RefreshSeconds));
+    }
+
+    private void FinishTaskImmediately()
+    {
+        var task = measurementTasks?.Tasks.SingleOrDefault(t => t.EndUtc == null);
+        if (task == null || !TryTaskWrite(() => measurementTasks!.End(task.Id, DateTimeOffset.UtcNow))) return;
+        CompleteTaskUi();
+    }
+    private void AdvanceTaskSettlement(DateTimeOffset? sample = null)
+    {
+        if (measurementTasks == null || !measurementTasks.Tasks.Any(t => t.EndUtc == null && t.SettlementRequestedUtc.HasValue)) return;
+        bool complete = false;
+        if (!TryTaskWrite(() => complete = measurementTasks.AdvanceSettlement(DateTimeOffset.UtcNow, sample))) return;
+        if (complete) CompleteTaskUi(); else if (sample.HasValue) _ = RefreshMiniHistoryAsync();
+    }
+    private void CompleteTaskUi()
+    {
+        preferences.MeasurementBaselineUtc = ""; miniBaselineDelta = null;
+        recordingWindow?.Close(); SavePreferences(); RefreshMiniRecordDeltaButton(); RefreshUsageProgress(); _ = RefreshMiniHistoryAsync();
+    }
+    private void RepeatMeasurement(string name)
+    {
+        if (HasActiveMeasurement || measurementTasks == null) return;
+        if (!TryTaskWrite(() => measurementTasks.Start(name, DateTimeOffset.UtcNow, preferences.RefreshSeconds))) return;
+        preferences.MeasurementBaselineUtc = measurementTasks.Tasks.Single(t => t.EndUtc == null).StartUtc.ToString("O");
+        SavePreferences(); _ = RefreshMiniHistoryAsync(); if (monitor != null) _ = monitor.RefreshAsync();
+    }
+    internal void RepeatFromHistory(string name)
+    {
+        RepeatMeasurement(name);
+        if (tasksWindow != null) _ = tasksWindow.ReloadAsync();
+    }
+    internal void SaveTaskTemplate(string name)
+    {
+        name = TaskRepository.CleanName(name);
+        if (!preferences.TaskTemplates.Contains(name)) preferences.TaskTemplates.Add(name);
+        SavePreferences();
+    }
+    private void AddTaskMarker()
+    {
+        var task = measurementTasks?.Tasks.SingleOrDefault(t => t.EndUtc == null); if (task == null) return;
+        var dialog = new TaskNameDialog(this, null, UiText.T("添加时间线标记", "Add timeline marker"));
+        if (dialog.ShowDialog() == true && TryTaskWrite(() => measurementTasks!.AddMarker(task.Id, dialog.TaskName, DateTimeOffset.UtcNow))) _ = RefreshMiniHistoryAsync();
     }
 
     private void RecordSamplingEvent(string value)
@@ -128,6 +179,7 @@ public partial class MainWindow
 
     private void OpenTasks(object sender, RoutedEventArgs e)
     {
+        if (AmountDetailsHidden()) return;
         if (measurementTasks == null) { MessageBox.Show(this, taskStorageError, "Copilot Pulse"); return; }
         if (tasksWindow != null) { tasksWindow.Show(); tasksWindow.Activate(); return; }
         tasksWindow = new TasksWindow(measurementTasks,
@@ -222,7 +274,7 @@ public partial class MainWindow
         preferences.MeasurementBaselineUtc = "";
         preferences.MiniShowRecordDelta = true;
         RefreshMiniRecordDeltaButton(); RefreshUsageProgress();
-        if (MiniRecordDeltaButton.IsEnabled || preferences.MiniShowRecordDelta || ShowMiniTaskDelta)
+        if (!MiniRecordDeltaButton.IsEnabled || preferences.MiniShowRecordDelta || ShowMiniTaskDelta)
             throw new InvalidOperationException("Inactive measurement must disable and clear mini task delta");
         ToggleMiniRecordDelta(this, new RoutedEventArgs());
         if (preferences.MiniShowRecordDelta) throw new InvalidOperationException("Inactive task delta was enabled");

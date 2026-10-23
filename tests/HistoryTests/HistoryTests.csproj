@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><Version>1.13.1</Version><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <PropertyGroup><OutputType>Exe</OutputType><Version>1.14.0</Version><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
   <ItemGroup><Compile Include="../../AutoUpdatePolicy.cs" Link="AutoUpdatePolicy.cs"/><Compile Include="../../UpdateService.cs" Link="UpdateService.cs"/><Compile Include="../../History.cs" Link="History.cs"/><Compile Include="../../DataStorage.cs" Link="DataStorage.cs"/><Compile Include="../../SettingsPolicy.cs" Link="SettingsPolicy.cs"/><Compile Include="../../Models.cs" Link="Models.cs"/></ItemGroup>
-  <ItemGroup><Compile Include="../../TaskTracking.cs" Link="TaskTracking.cs"/></ItemGroup>
+  <ItemGroup><Compile Include="../../ActivitySummary.cs" Link="ActivitySummary.cs"/><Compile Include="../../TaskTracking.cs" Link="TaskTracking.cs"/></ItemGroup>
   <ItemGroup><Compile Include="../../UsageInsights.cs" Link="UsageInsights.cs"/></ItemGroup>
 <ItemGroup><Compile Include="../../QuotaForecasting.cs" Link="QuotaForecasting.cs"/></ItemGroup></Project>

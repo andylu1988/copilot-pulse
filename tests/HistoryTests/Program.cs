@@ -1,5 +1,7 @@
 using CopilotPulse;
 
+try
+{
 if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
 {
     Console.Error.WriteLine("Usage: HistoryTests <output-directory>");
@@ -82,6 +84,16 @@ SettingsPolicy.Normalize(miniRecordPreferences);
 var restoredMiniRecordPreferences = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(miniRecordPreferences), Store.Json)!;
 Check("mini record delta preference survives preference restart", restoredMiniRecordPreferences.MiniShowRecordDelta && DateTimeOffset.TryParse(restoredMiniRecordPreferences.MeasurementBaselineUtc, out _));
 Check("mini record delta remains opt-in and independent of baseline", !new Preferences().MiniShowRecordDelta && restoredMiniRecordPreferences.MiniShowRecordDelta);
+foreach (string miniRange in new[] { "today", "24h", "7d", "month", "2026-09" })
+{
+    var selection = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { MiniHistoryRange = miniRange, MiniDualMetrics = true }))!;
+    SettingsPolicy.Normalize(selection);
+    Check("mini range and dual metric persist " + miniRange, selection.MiniHistoryRange == miniRange && selection.MiniDualMetrics);
+}
+var taskPrimary = new Preferences { MiniShowRecordDelta = true, MiniHistoryRange = "7d" };
+SettingsPolicy.Normalize(taskPrimary);
+Check("task primary clears conflicting history metric", taskPrimary.MiniHistoryRange == "");
+Check("available history months exclude unrelated files", repository.AvailableMonths().SequenceEqual(new[] { "2026-10", "2026-09" }));
 
 Check("default history range retains this month after restart", new Preferences().HistoryRange == "month");
 var restoredView = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { HistoryRange = "2026-09", HistoryChanges = true }))!;
@@ -235,18 +247,18 @@ options.NumberFont = "bogus"; SettingsPolicy.Normalize(options); Check("invalid 
 foreach (string font in SettingsPolicy.NumberFonts) { options.NumberFont = font; SettingsPolicy.Normalize(options); Check("font persists " + font, options.NumberFont == font); }
 var projectXml = System.Xml.Linq.XDocument.Load(Path.Combine(AppContext.BaseDirectory, "../../../../../CopilotPulse.csproj"));
 var declaredVersion = Version.Parse(projectXml.Descendants("Version").Single().Value);
-Check("runtime version follows project version", UpdatePolicy.Current == declaredVersion);
+Check("runtime version follows project version", UpdatePolicy.Current == UpdatePolicy.NormalizeVersion(declaredVersion));
 Check("four part assembly version normalized", UpdatePolicy.NormalizeVersion(new Version(1,11,2,0)).ToString() == "1.11.2");
 Check("missing installed library cannot report success", !UpdatePolicy.InstalledVersionMatches(Path.Combine(directory,"CopilotPulse.exe"), declaredVersion));
 string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
-string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.14.0/CopilotPulse-Setup-1.14.0-x64.exe";
+string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.15.0/CopilotPulse-Setup-1.15.0-x64.exe";
 string validDigest = "sha256:" + new string('a',64);
-Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,14,0));
-Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,14,0)) == null);
-Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
-Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
-try { UpdatePolicy.Parse(ReleaseJson("1.14.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
-try { UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,15,0));
+Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,15,0)) == null);
+Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
+Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
+try { UpdatePolicy.Parse(ReleaseJson("1.15.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
+try { UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
 string hashFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid()+".bin");
 File.WriteAllText(hashFile,"verified installer test");
 string expectedHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile)));
@@ -254,7 +266,7 @@ await UpdatePolicy.VerifyAsync(hashFile,expectedHash); Check("download hash veri
 try { await UpdatePolicy.VerifyAsync(hashFile,new string('0',64)); Check("tampered download rejected",false); } catch (InvalidDataException) { Check("tampered download rejected",true); }
 File.Delete(hashFile);
 var autoNow = new DateTimeOffset(2026,10,11,12,0,0,TimeSpan.FromHours(8));
-var candidate = UpdatePolicy.Parse(ReleaseJson("1.14.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
+var candidate = UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
 var autoState = new AutoUpdateState();
 Check("initial hourly check due", AutoUpdatePolicy.CheckDue(autoState, autoNow));
 autoState.LastAttemptUtc = autoNow;
@@ -274,15 +286,22 @@ resumed.Acknowledged = true;
 Check("opening notice cancels automatic installation", !AutoUpdatePolicy.InstallDue(resumed,candidate,autoNow.AddDays(3),true));
 var acknowledged = System.Text.Json.JsonSerializer.Deserialize<AutoUpdateState>(System.Text.Json.JsonSerializer.Serialize(resumed))!;
 Check("acknowledgement survives restart", acknowledged.Acknowledged);
-AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,15,0)},candidate.Repository,autoNow.AddDays(3));
+AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,16,0)},candidate.Repository,autoNow.AddDays(3));
 Check("different release gets full grace", !acknowledged.Acknowledged && acknowledged.FirstSeenUtc == autoNow.AddDays(3).ToUniversalTime());
 Check("mismatched candidate cannot install", !AutoUpdatePolicy.InstallDue(acknowledged,candidate,autoNow.AddDays(6),true));
 AutoUpdatePolicy.Observe(acknowledged,null,candidate.Repository,autoNow.AddDays(4));
 Check("withdrawn release clears notice", acknowledged.Version == "" && acknowledged.FirstSeenUtc == null);
 TaskChecks.Run(directory, Check);
+WorkspaceChecks.Run(directory, Check);
 InsightsChecks.Run(Check);
 ForecastChecks.Run(Check);
 if(args.Length >= 4 && args[1] == "--forecast-replay") ForecastReplay.Run(args[2],args[3],Check);
 Console.WriteLine($"FINAL {passed} checks passed");
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine("TEST FAILURE: " + error);
+    Environment.ExitCode = 1;
+}
 
 namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }

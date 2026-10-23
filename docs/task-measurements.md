@@ -1,36 +1,48 @@
-# 任务计量与采样健康 / Task measurements and sampling health
+# 任务计量 / Task measurements
 
-v1.13.1。可用来观察单次任务（修复 Bug、方案准备、代码审查）的用量变化。
+### 一次任务，从开始到延迟结算
 
-## 中文
+1. 点击 **开始任务计量**，填写任务名；可选择常用模板，或在计量记录中选择 **再测一次** 沿用备注。
+2. 等待首个成功采样建立零基线后再工作。计量期间可以添加“开始跑测试”“切换模型”等时间线标记。
+3. 点击 **结束并保存计量** 后，默认等待 3 次新的成功采样，最长 10 分钟，以观察源页面延迟更新。可以立即结束、跳过等待；超时结果标为未确认。
+4. 在 **计量记录** 回看任务名、起止时间、增量、采样次数、失败与重试，复制摘要或导出 CSV / JSON / PNG。
 
-1. 在主界面点击 **开始任务计量**，输入任务备注。点击时刻是起点；随后首个成功采样作为零基线，不使用点击之前的缓存读数。
-2. 等待第一个成功采样建立零基线后开始工作，观察 **任务计量增量**。主界面显示采样健康：刚更新、正在采样、数据延迟、页面未刷新或暂停。悬停可查看最近成功时间和目标刷新间隔。
-3. 任务结束后，等待页面读数更新，再点击 **结束并保存**。任务名称、起止时间、增量和采样记录保留，重启后仍可回看。
-4. 点击 **计量记录**，选择已保存任务，查看曲线、有效采样数、估计缺失次数、失败刷新、重试和最近成功时间；可修改任务备注、复制摘要。
-5. 点击 **导出所选计量** 或 **导出全部采样与计量**，选择 CSV / JSON。CSV 包含任务、采样和刷新事件的分类型行；JSON 保留结构化数据。
+适合测试观察单次 Bug 修复、代码审查、生成图片或方案准备期间的花费。增量包含源页面延迟及同期并行用量，不能当作精确单任务账单；时间线标记也不能自动识别模型花费。
 
-**计算口径**：这是配额页面的观测增量，不是精确任务账单。源页面可能延迟，其他同时运行的任务也可能计入。无有效读数时显示 `—`；缺失区间不会伪造补点。缺失数是根据采样间隔估计，不是确切漏采数；历史旧数据没有刷新事件日志。跨月按 UTC 配额重置边界和可比较账户计算，界面时间按本机系统时区显示。
+![常用任务模板与清晰的勾选文字](screenshots/v1.14.0/task-name-templates.png)
 
-**保存与分享**：在现有应用数据目录保存 `tasks.json`（任务元数据）、`history/yyyy-MM.jsonl`（成功读数）、`sampling/yyyy-MM.jsonl`（刷新状态）。数据未加密；日志不记录令牌或网页正文。匿名化默认开启，移除账户信息和任务名称，仍保留时间、金额和任务 ID，分享前请检查。CSV 不含账户详情。
+![计量记录、再次计量与阶段标记](screenshots/v1.14.0/tasks-markers-matrix.png)
 
-**迷你模式**：“迷你显示任务增量”仍是手动选项，开启后显示当前任务的增量，不会自动替换月度累计显示。未开始任务时按钮禁用；结束后恢复月度 Overall。已开始但没有有效采样时显示等待状态。
+### 迷你双指标，主副数字独立选
 
-## English
+主界面 **迷你 ▾** 或迷你面板右键菜单可选择主指标，开启双指标并选择副指标。可显示本月总用量、今天、滚动 24 小时、7 天、本月或已保存月份的观测增量；有正在计量的任务时才可选任务增量。
 
-Version 1.13.1 observes usage changes during an individual task, such as a bug fix, proposal or code review.
+**不需要开启任务计量，也能同时显示“本月累计＋今天 / 七天增量”。** 任务结束后不再显示不可用的任务数字；尚无足够采样时显示等待状态。退出迷你恢复此前的紧凑或完整布局，选择保存在本机。
 
-1. Click **Start measurement** on the widget and enter a name. The click establishes the start time; the first successful sample afterwards establishes zero. Cached readings from before the click are excluded.
-2. Work while observing the **Task measurement delta**. Sampling health shows fresh, sampling, delayed, page needs attention, or paused. Hover for the last successful read and target interval.
-3. Wait for source readings to catch up, then choose **End & save**. Task names, times, deltas and samples remain available after restarting.
-4. Open **Measurement history**, select a saved task and inspect its chart, valid samples, estimated gaps, failed refreshes, retries and last successful read. Rename the task or copy its summary.
-5. Use **Export selected** or **Export all samples & measurements**, then choose CSV or JSON. CSV uses typed rows for tasks, samples and refresh events; JSON preserves structured records.
+![迷你双指标：本月累计 $1,234.56，七天观测增量 +$399.05](screenshots/v1.14.0/mini-month-seven-days.png)
 
-**Interpretation:** These are observed quota changes, not exact per-task billing. The source may lag and concurrent work can contribute to the same readings. No valid sample is shown as `—`; gaps are never filled with fabricated readings. Missing-sample counts are estimates based on cadence. Older history has no refresh event journal. Calculations respect UTC monthly resets and comparable accounts; displayed timestamps use the system's local timezone.
+![迷你双指标：任务增量与本月累计](screenshots/v1.14.0/mini-dual-task.png)
 
-**Storage and sharing:** The existing app data folder contains `tasks.json` (metadata), `history/yyyy-MM.jsonl` (successful readings), and `sampling/yyyy-MM.jsonl` (refresh states). Local files are unencrypted. The sampling journal excludes tokens and page text. Anonymization is enabled by default: account details and task names are removed, while times, amounts and task IDs remain. Review before sharing. CSV never contains account details.
-
-**Mini mode:** Showing the current task delta remains an explicit option on the main widget. It does not automatically replace monthly usage. The option is disabled without an active task. Ending the task restores monthly Overall; an active task waits explicitly for a valid sample.
+![迷你主副指标菜单](screenshots/v1.14.0/mini-metrics-menu-zh.png)
 
 
-单任务 PNG、用量预估和快捷操作见 [用量预估指南 / Usage forecast guide](usage-insights.md)。
+### Named tasks and delayed settlement
+
+Start a measurement, enter a note or choose a saved template, and wait for the first successful sample before working. Add timeline markers such as “Run tests” or “Switch model”. End & save now waits for 3 new successful samples, up to 10 minutes, to observe delayed source changes. Finish immediately to skip waiting; a timeout remains unconfirmed. Measurement history supports Measure again, renaming, summaries, sampling-health details and CSV / JSON / PNG exports.
+
+Use it to observe a bug fix, review, image-generation session or proposal task. Source latency and concurrent activity affect the delta. Markers are time notes and do not identify model costs; observations are not exact task bills.
+
+![Measurement history](screenshots/v1.14.0/release-tasks-en.png)
+
+### Independent primary and secondary mini metrics
+
+Use **Mini ▾** or the mini panel context menu to choose the main metric, enable dual metrics and choose the secondary metric. Monthly total, Today, rolling 24 hours / 7 days, current month and saved-month changes are available. Task delta is available only while a task is active.
+
+**Monthly total plus Today or 7-day delta works without starting a task.** Unavailable task metrics fall back safely; insufficient samples show a waiting state. Choices persist, and expanding mini restores the previous compact/full mode.
+
+![Monthly total plus 7-day observed change; Chinese UI](screenshots/v1.14.0/mini-month-seven-days.png)
+
+![English mini metric menu](screenshots/v1.14.0/mini-metrics-menu-en.png)
+
+
+[完整说明](RELEASE-v1.14.0.md)

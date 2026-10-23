@@ -39,6 +39,7 @@ public partial class MainWindow
     private void KeepOnCurrentScreen()
     {
         if(closing || !IsLoaded || !IsVisible)return;
+        RevealTucked();
         var area=System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(this).Handle).WorkingArea;
         var origin=PointToScreen(new Point(0,0));var dpi=VisualTreeHelper.GetDpi(this);
         double width=ActualWidth*dpi.DpiScaleX,height=ActualHeight*dpi.DpiScaleY;
@@ -49,13 +50,19 @@ public partial class MainWindow
     }
     private void SetDisplayMode(string mode)
     {
+        RevealTucked();
         string normalizedMode = DisplayModes.Normalize(mode,preferences.Compact);
         if(normalizedMode=="mini" && preferences.DisplayMode!="mini")
             preferences.MiniReturnMode=preferences.DisplayMode=="compact" ? "compact" : "full";
         preferences.DisplayMode=normalizedMode;
         ApplyDisplayMode();SavePreferences();skinWindow?.RefreshSelection();
     }
-    private void EnterMini(object sender,RoutedEventArgs e)=>SetDisplayMode("mini");
+    private void EnterMini(object sender,RoutedEventArgs e)
+    {
+        var menu = BuildMiniMetricMenu(true);
+        menu.PlacementTarget = sender as UIElement ?? MiniHost;
+        menu.IsOpen = true;
+    }
     private void ExpandMini(object sender,RoutedEventArgs e)=>SetDisplayMode(preferences.MiniReturnMode=="compact" ? "compact" : "full");
     private MenuItem BuildDisplayModeMenu()
     {
@@ -72,7 +79,7 @@ public partial class MainWindow
         string effective=paused?"paused":status;
         if(effective=="live" && data!=null && DateTimeOffset.Now-data.FetchedAt>TimeSpan.FromSeconds(Math.Max(180,preferences.RefreshSeconds*3+30)))effective="stale";
         FullAmount.Update(data?.Total,effective,data?.FetchedAt);
-        MiniDisplay.Update(ShowMiniTaskDelta ? miniBaselineDelta : data?.Total,effective,data?.FetchedAt,ShowMiniTaskDelta);
+        MiniDisplay.Update(ShowMiniTaskDelta ? miniBaselineDelta : ShowMiniHistoryDelta ? miniTrendDelta : data?.Total,effective,data?.FetchedAt,ShowMiniTaskDelta,MiniMetricCaption);
     }
     private void RefreshDisplayEffects()
     {
@@ -83,7 +90,7 @@ public partial class MainWindow
         DependencyObject? node=e.OriginalSource as DependencyObject;
         while(node!=null) {if(node is Button)return;node=VisualTreeHelper.GetParent(node);}
         if(e.ClickCount==2) {SetDisplayMode(preferences.MiniReturnMode=="compact" ? "compact" : "full");e.Handled=true;return;}
-        if(e.LeftButton==MouseButtonState.Pressed) {DragMove();SavePreferences();}
+        if(e.LeftButton==MouseButtonState.Pressed && !preferences.DesktopLocked) {DragMove();SnapDesktop();SavePreferences();}
     }
     private void MiniContextMenu(object sender,MouseButtonEventArgs e)
     {

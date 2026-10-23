@@ -22,7 +22,7 @@
         </StackPanel>
         <StackPanel x:Name="HeaderActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
           <Button x:Name="NewVersionButton" Content="有新版本" FontSize="9" Padding="5,7" Foreground="{DynamicResource SkinAccent}" Background="{DynamicResource SkinHover}" Visibility="Collapsed" Click="NewVersionClick"/>
-          <Button Content="迷你" FontSize="11" Click="EnterMini" ToolTip="切换迷你数字框" Padding="7,7"/>
+          <Button Content="迷你 ▾" FontSize="11" Click="EnterMini" ToolTip="选择迷你模式显示指标" Padding="7,7"/>
           <Button Content="换肤" FontSize="11" Click="OpenSkins" ToolTip="选择皮肤和自定义背景" Padding="7,7"/>
           <Button x:Name="PinButton" ToolTip="切换置顶" AutomationProperties.Name="切换置顶" Click="TogglePin"><Path Width="14" Height="14" Stretch="Uniform" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Data="M7,2 L17,2 M9,2 L9,9 L5,13 L19,13 L15,9 L15,2 M12,13 L12,22"/></Button>
           <Button ToolTip="设置" AutomationProperties.Name="设置" Click="ShowSettings"><Path Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource SkinMuted}" Data="M4,10 A2,2 0 1 0 4,14 A2,2 0 1 0 4,10 M12,10 A2,2 0 1 0 12,14 A2,2 0 1 0 12,10 M20,10 A2,2 0 1 0 20,14 A2,2 0 1 0 20,10"/></Button>
@@ -58,7 +58,7 @@
       <UniformGrid Columns="2" Rows="2" Margin="-3,8,-3,0">
         <Button x:Name="RecordPointButton" Click="ToggleRecordPoint" Content="开始任务计量" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
         <Button x:Name="TaskHistoryButton" Click="OpenTasks" Content="计量记录 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
-        <Button x:Name="MiniRecordDeltaButton" Click="ToggleMiniRecordDelta" Content="迷你显示任务增量：关" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
+        <Button x:Name="MiniRecordDeltaButton" Click="OpenMonthlyActivity" Content="月记录 / 热力图" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
         <Button x:Name="UsageForecastButton" Click="OpenUsageForecast" Content="用量预估 ↗" Style="{StaticResource GlassButtonStyle}" Height="34" FontSize="11" Background="{DynamicResource SkinHover}" Padding="6,5" Margin="3,0,3,6"/>
       </UniformGrid>
       <TextBlock x:Name="SamplingHealthLabel" FontSize="10" Margin="0,8,0,0" TextWrapping="Wrap"/>
@@ -84,10 +84,13 @@
   </ScrollViewer>
   <Grid x:Name="MiniHost" Margin="8" Height="114" Visibility="Collapsed" MouseLeftButtonDown="MiniMouseDown" MouseRightButtonUp="MiniContextMenu" MouseEnter="MiniEnter" MouseLeave="MiniLeave">
     <local:MoneyReadout x:Name="MiniDisplay" Tile="True" Height="96" VerticalAlignment="Top"/>
-    <TextBlock x:Name="MiniUsageProgress" FontSize="10" Foreground="{DynamicResource SkinText}" Margin="14,0,14,1" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
+    <Border Background="{DynamicResource SkinPanel}" CornerRadius="3" Margin="8,0,8,0" VerticalAlignment="Bottom" MinHeight="18" IsHitTestVisible="False">
+      <TextBlock x:Name="MiniUsageProgress" FontSize="12" Foreground="{DynamicResource SkinText}" Margin="6,2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+    </Border>
     <Border x:Name="MiniTools" Background="{DynamicResource SkinPanel}" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,23" Visibility="Collapsed" Opacity="0">
       <StackPanel Orientation="Horizontal">
         <Button Content="展开" FontSize="9" Padding="5,3" Click="ExpandMini" ToolTip="返回之前的显示模式"/>
+        <Button Content="指标 ▾" FontSize="9" Padding="5,3" Click="EnterMini" ToolTip="选择显示指标"/>
         <Button Content="换肤" FontSize="9" Padding="5,3" Click="OpenSkins" ToolTip="选择皮肤"/>
         <Button Content="⋯" FontSize="11" Padding="5,1" Click="ShowSettings" ToolTip="设置 / 历史 / 刷新"/>
       </StackPanel>

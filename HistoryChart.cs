@@ -12,6 +12,8 @@ namespace CopilotPulse;
 public sealed class HistoryChart : FrameworkElement
 {
     private IReadOnlyList<HistoryPoint> points = Array.Empty<HistoryPoint>();
+    private IReadOnlyList<TaskMarker> markers = Array.Empty<TaskMarker>();
+    public void SetMarkers(IReadOnlyList<TaskMarker> values) { markers = values; InvalidateVisual(); }
     private int hovered = -1, pinned = -1;
     private double? zoomStart, zoomEnd, dragStart;
     private double dragEnd;
@@ -92,7 +94,7 @@ public sealed class HistoryChart : FrameworkElement
     internal void ZoomForReview(DateTimeOffset from, DateTimeOffset until) => ZoomTo(from.ToUnixTimeMilliseconds(), until.ToUnixTimeMilliseconds());
     internal void InspectPointForReview(int index) { hovered = points.Count == 0 ? -1 : Math.Clamp(index, 0, points.Count - 1); InvalidateVisual(); }
 
-    private FormattedText Label(string text, double size, string color) => new(text, Us, FlowDirection.LeftToRight, new Typeface("Segoe UI, Microsoft YaHei UI"), size, Brush(color), VisualTreeHelper.GetDpi(this).PixelsPerDip);
+    private FormattedText Label(string text, double size, string color) => new(SkinTheme.Settings.HideAmounts && (text.Contains("$") || decimal.TryParse(text, System.Globalization.NumberStyles.Any, Us, out _)) ? "••••" : text, Us, FlowDirection.LeftToRight, new Typeface("Segoe UI, Microsoft YaHei UI"), size, Brush(color), VisualTreeHelper.GetDpi(this).PixelsPerDip);
     private decimal? Value(HistoryPoint point) => Changes ? point.Delta : point.Value;
     private Point Position(int index, double value) => new(plot.Left + (points[index].Time.ToUnixTimeMilliseconds() - minTime) / (maxTime - minTime) * plot.Width, plot.Bottom - (value - minValue) / (maxValue - minValue) * plot.Height);
 
@@ -133,6 +135,13 @@ public sealed class HistoryChart : FrameworkElement
         }
         if (!Mini)
         {
+            foreach (var marker in markers.Where(m => m.TimeUtc.ToUnixTimeMilliseconds() >= minTime && m.TimeUtc.ToUnixTimeMilliseconds() <= maxTime))
+            {
+                double x = plot.Left + (marker.TimeUtc.ToUnixTimeMilliseconds() - minTime) / (maxTime - minTime) * plot.Width;
+                dc.DrawLine(new Pen(Brush(Accent), 1) { DashStyle = DashStyles.Dash }, new Point(x, plot.Top), new Point(x, plot.Bottom));
+                var note = Label(marker.Name.Length > 16 ? marker.Name[..16] + "…" : marker.Name, 10, Accent);
+                dc.DrawText(note, new Point(Math.Clamp(x, plot.Left, Math.Max(plot.Left, plot.Right - note.Width)), 8));
+            }
             for (int i = 0; i <= 4; i++)
             {
                 double y = plot.Top + plot.Height * i / 4;

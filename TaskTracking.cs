@@ -15,7 +15,15 @@ public sealed class MeasurementTask
     public DateTimeOffset StartUtc { get; set; }
     public DateTimeOffset? EndUtc { get; set; }
     public int Cadence { get; set; } = 60;
+    public DateTimeOffset? SettlementRequestedUtc { get; set; }
+    public DateTimeOffset? LastSettlementSampleUtc { get; set; }
+    public int SettlementSamples { get; set; }
+    public string SettlementResult { get; set; } = "";
+    public List<TaskMarker> Markers { get; set; } = new();
+    public MeasurementTask Copy() => new() { Id = Id, Name = Name, StartUtc = StartUtc, EndUtc = EndUtc, Cadence = Cadence, SettlementRequestedUtc = SettlementRequestedUtc, LastSettlementSampleUtc = LastSettlementSampleUtc, SettlementSamples = SettlementSamples, SettlementResult = SettlementResult, Markers = new(Markers ?? new()) };
 }
+
+public sealed record TaskMarker(DateTimeOffset TimeUtc, string Name);
 
 public sealed record SamplingEvent(DateTimeOffset Time, string State, int Cadence);
 public sealed record SamplingGap(DateTimeOffset From, DateTimeOffset Until, int EstimatedMissing);
@@ -36,6 +44,11 @@ public sealed class TaskRepository
             : new();
         if (tasks.Any(t => t == null || t.StartUtc == default || t.Name == null || string.IsNullOrWhiteSpace(t.Id) || t.Cadence < 15 || t.Cadence > 900 || t.EndUtc < t.StartUtc) || tasks.Select(t => t.Id).Distinct().Count() != tasks.Count || tasks.Count(t => t.EndUtc == null) > 1)
             throw new InvalidDataException("Invalid task metadata");
+        foreach (var t in tasks)
+        {
+            t.Markers ??= new(); t.SettlementResult ??= "";
+            if (t.SettlementSamples < 0 || t.SettlementSamples > 3 || t.SettlementRequestedUtc < t.StartUtc || t.Markers.Any(m => m == null || m.Name == null || m.TimeUtc < t.StartUtc || m.TimeUtc > t.EndUtc)) throw new InvalidDataException("Invalid settlement or marker metadata");
+        }
     }
     private void Commit(List<MeasurementTask> updated)
     {
@@ -48,7 +61,18 @@ public sealed class TaskRepository
                 JsonSerializer.Serialize(stream, updated, Store.Json);
                 stream.Flush(true);
             }
-            File.Move(temp, file, true);
+            // Windows file scanners can briefly deny replacement after a save.
+            // Keep the previous record intact and retry only transient file errors.
+            for (int attempt = 0; ; attempt++)
+            {
+                try { File.Move(temp, file, true); break; }
+                catch (Exception ex) when (attempt < 4 &&
+                    (ex is IOException || ex is UnauthorizedAccessException) &&
+                    (ex.HResult & 0xffff) is 5 or 32 or 33)
+                {
+                    System.Threading.Thread.Sleep(20 << attempt);
+                }
+            }
         }
         tasks.Clear(); tasks.AddRange(updated);
     }
@@ -63,9 +87,37 @@ public sealed class TaskRepository
         var task = tasks.Single(t => t.Id == id);
         if (task.EndUtc != null) return;
         if (end < task.StartUtc) throw new InvalidOperationException("End before start; check the system clock");
-        Commit(tasks.Select(t => t.Id == id ? new MeasurementTask { Id = t.Id, Name = t.Name, StartUtc = t.StartUtc, EndUtc = end.ToUniversalTime(), Cadence = t.Cadence } : t).ToList());
+        Change(id, t => { t.EndUtc = end.ToUniversalTime(); if (t.SettlementResult.Length == 0) t.SettlementResult = "manual"; });
     }
-    public void Rename(string id, string name) => Commit(tasks.Select(t => t.Id == id ? new MeasurementTask { Id = t.Id, Name = CleanName(name), StartUtc = t.StartUtc, EndUtc = t.EndUtc, Cadence = t.Cadence } : t).ToList());
+    private void Change(string id, Action<MeasurementTask> change) => Commit(tasks.Select(t => { if (t.Id != id) return t; var copy = t.Copy(); change(copy); return copy; }).ToList());
+    public void Rename(string id, string name) => Change(id, t => t.Name = CleanName(name));
+    public void AddMarker(string id, string name, DateTimeOffset now)
+    {
+        var t = tasks.Single(t => t.Id == id);
+        if (t.EndUtc.HasValue || now < t.StartUtc) throw new InvalidOperationException("Task is not recording");
+        Change(id, copy => copy.Markers.Add(new(now.ToUniversalTime(), CleanName(name))));
+    }
+    public void RequestSettlement(string id, DateTimeOffset now)
+    {
+        var t = tasks.Single(t => t.Id == id);
+        if (t.EndUtc.HasValue || t.SettlementRequestedUtc.HasValue) return;
+        if (now < t.StartUtc) throw new InvalidOperationException("Clock moved before start");
+        Change(id, copy => copy.SettlementRequestedUtc = now.ToUniversalTime());
+    }
+    public bool AdvanceSettlement(DateTimeOffset now, DateTimeOffset? sampleUtc = null)
+    {
+        var task = tasks.SingleOrDefault(t => t.EndUtc == null && t.SettlementRequestedUtc.HasValue);
+        if (task == null) return false;
+        bool sample = sampleUtc.HasValue && sampleUtc > task.SettlementRequestedUtc && sampleUtc > (task.LastSettlementSampleUtc ?? DateTimeOffset.MinValue) && sampleUtc <= now;
+        bool timeout = now - task.SettlementRequestedUtc!.Value >= TimeSpan.FromMinutes(10);
+        if (!sample && !timeout) return false;
+        bool complete = timeout || task.SettlementSamples + (sample ? 1 : 0) >= 3;
+        Change(task.Id, t => {
+            if (sample) { t.LastSettlementSampleUtc = sampleUtc; t.SettlementSamples++; }
+            if (complete) { t.EndUtc = now.ToUniversalTime(); t.SettlementResult = t.SettlementSamples >= 3 ? "observed" : "timeout"; }
+        });
+        return complete;
+    }
     public MeasurementTask? SyncBaseline(string? baseline, int cadence, DateTimeOffset now)
     {
         bool valid = DateTimeOffset.TryParse(baseline, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var start);
@@ -176,21 +228,23 @@ public static class TaskExport
     }
     public static string Csv(IReadOnlyList<MeasurementTask> tasks, IReadOnlyList<HistoryFrame> frames, IReadOnlyList<SamplingEvent> events, DateTimeOffset now, bool anonymous)
     {
-        var rows = new List<string> { "record_type,task_id,task_name,start_utc,end_utc,time_utc,amount_usd,samples,estimated_missing,failed_refreshes,last_success_utc,state,cadence_seconds,retry_attempts" };
+        var rows = new List<string> { "record_type,task_id,task_name,start_utc,end_utc,time_utc,amount_usd,samples,estimated_missing,failed_refreshes,last_success_utc,state,cadence_seconds,retry_attempts,settlement_result,settlement_requested_utc,settlement_samples" };
         foreach (var task in tasks)
         {
             var m = SamplingHealth.Measure(task, frames, events, now);
-            rows.Add(string.Join(",", new[] { "task", task.Id, anonymous ? "Task " + (tasks.ToList().IndexOf(task) + 1) : task.Name, task.StartUtc.ToString("O"), task.EndUtc?.ToString("O"), "", m.Delta?.ToString(Invariant), m.Samples.ToString(Invariant), m.Gaps.Sum(g => (long)g.EstimatedMissing).ToString(Invariant), m.FailedAttempts.ToString(Invariant), m.LastSuccess?.ToString("O"), "", task.Cadence.ToString(Invariant), m.RetryAttempts.ToString(Invariant) }.Select(Cell)));
+            rows.Add(string.Join(",", new[] { "task", task.Id, anonymous ? "Task " + (tasks.ToList().IndexOf(task) + 1) : task.Name, task.StartUtc.ToString("O"), task.EndUtc?.ToString("O"), "", m.Delta?.ToString(Invariant), m.Samples.ToString(Invariant), m.Gaps.Sum(g => (long)g.EstimatedMissing).ToString(Invariant), m.FailedAttempts.ToString(Invariant), m.LastSuccess?.ToString("O"), "", task.Cadence.ToString(Invariant), m.RetryAttempts.ToString(Invariant), task.SettlementResult, task.SettlementRequestedUtc?.ToString("O"), task.SettlementSamples.ToString(Invariant) }.Select(Cell)));
         }
-        foreach (var f in frames) rows.Add(string.Join(",", new[] { "sample", "", "", "", "", f.Time.ToUniversalTime().ToString("O"), f.Total.ToString(Invariant), "", "", "", "", "live", f.Cadence.ToString(Invariant), "" }.Select(Cell)));
-        foreach (var e in events) rows.Add(string.Join(",", new[] { "attempt", "", "", "", "", e.Time.ToUniversalTime().ToString("O"), "", "", "", "", "", e.State, e.Cadence.ToString(Invariant), "" }.Select(Cell)));
+        foreach (var task in tasks)
+            foreach (var marker in task.Markers ?? new()) rows.Add(string.Join(",", new[] { "marker", task.Id, anonymous ? "Marker" : marker.Name, "", "", marker.TimeUtc.ToUniversalTime().ToString("O"), "", "", "", "", "", "", "", "", "", "", "" }.Select(Cell)));
+        foreach (var f in frames) rows.Add(string.Join(",", new[] { "sample", "", "", "", "", f.Time.ToUniversalTime().ToString("O"), f.Total.ToString(Invariant), "", "", "", "", "live", f.Cadence.ToString(Invariant), "", "", "", "" }.Select(Cell)));
+        foreach (var e in events) rows.Add(string.Join(",", new[] { "attempt", "", "", "", "", e.Time.ToUniversalTime().ToString("O"), "", "", "", "", "", e.State, e.Cadence.ToString(Invariant), "", "", "", "" }.Select(Cell)));
         return string.Join("\r\n", rows) + "\r\n";
     }
     public static string Json(IReadOnlyList<MeasurementTask> tasks, IReadOnlyList<HistoryFrame> frames, IReadOnlyList<SamplingEvent> events, DateTimeOffset now, bool anonymous)
         => JsonSerializer.Serialize(new {
-            schemaVersion = 1, exportedAtUtc = now.ToUniversalTime(), anonymous,
+            schemaVersion = 2, exportedAtUtc = now.ToUniversalTime(), anonymous,
             note = "Observed source-page readings, not exact per-task billing. Missing counts are estimated. Timestamps and amounts remain in anonymous exports.",
-            tasks = tasks.Select((t, i) => new { t.Id, Name = anonymous ? "Task " + (i + 1) : t.Name, t.StartUtc, t.EndUtc, Metrics = SamplingHealth.Measure(t, frames, events, now) }),
+            tasks = tasks.Select((t, i) => new { t.Id, Name = anonymous ? "Task " + (i + 1) : t.Name, t.StartUtc, t.EndUtc, t.SettlementResult, t.SettlementRequestedUtc, t.SettlementSamples, Markers = (t.Markers ?? new()).Select(m => new { m.TimeUtc, Name = anonymous ? "Marker" : m.Name }), Metrics = SamplingHealth.Measure(t, frames, events, now) }),
             samples = frames.Select(f => new { TimeUtc = f.Time.ToUniversalTime(), f.Total, f.Cadence, Accounts = anonymous ? null : f.Accounts }),
             attempts = events
         }, Store.Json);

@@ -60,6 +60,7 @@ public sealed class HistoryRepository
         catch (JsonException) { return null; }
     }
 
+    public string[] AvailableMonths() => Files().Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(m => HistoryRanges.Normalize(m) == m).Reverse().ToArray();
     private IEnumerable<string> Files() => Directory.Exists(directory)
         ? Directory.EnumerateFiles(directory, "????-??.jsonl").OrderBy(f => f, StringComparer.Ordinal)
         : Enumerable.Empty<string>();

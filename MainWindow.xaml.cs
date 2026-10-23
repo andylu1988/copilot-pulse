@@ -64,7 +64,7 @@ public partial class MainWindow : Window
             tray?.Dispose();
             trayIcon?.Dispose();
         };
-        LocationChanged += (_, _) => { if (IsLoaded && !App.Demo && !App.Smoke) { preferences.Left = Left; preferences.Top = Top; } };
+        LocationChanged += (_, _) => { if (IsLoaded && !automaticMove && !tucked && !App.Demo && !App.Smoke) { preferences.Left = Left; preferences.Top = Top; } };
     }
 
     private async void LoadedAsync(object sender, RoutedEventArgs e)
@@ -72,6 +72,7 @@ public partial class MainWindow : Window
         PlaceOnScreen();
         InitializeHistory();
         InitializeOperations();
+        InitializeWorkspace();
         if(App.MiniAtStartup || App.StartSkin != null) SavePreferences();
         if (App.Demo)
         {
@@ -85,6 +86,7 @@ public partial class MainWindow : Window
                 }
             });
             SetStatus("demo");
+            if (App.WorkspaceReviewPath != null) { await ReviewWorkspaceAsync(App.WorkspaceReviewPath); Close(); return; }
             if (App.AppearanceReviewPath != null) { await ReviewAppearanceAsync(App.AppearanceReviewPath); Close(); return; }
             if (App.TasksReviewPath != null) { await ReviewTasksAsync(App.TasksReviewPath); Close(); return; }
             if (App.UpdateReviewInstaller != null)
@@ -110,7 +112,7 @@ public partial class MainWindow : Window
             if (cached?.Ok == true && cached.Accounts.Count > 0) { RecordHistory(cached); RenderData(cached); SetStatus("cached"); }
         }
         monitor = new SourceMonitor();
-        monitor.Received += d => { if (closing) return; RecordHistory(d); RenderData(d); EvaluateWarning(true); if (!App.Smoke) Store.Write("consumption.json", d); };
+        monitor.Received += d => { if (closing) return; RecordHistory(d); RenderData(d); AdvanceTaskSettlement(d.FetchedAt); EvaluateWarning(true); if (!App.Smoke) Store.Write("consumption.json", d); };
         monitor.Status += s => { if (!closing) { RecordSamplingEvent(s); SetStatus(s); } };
         nextRefresh = DateTimeOffset.Now.AddSeconds(preferences.RefreshSeconds);
         timer.Tick += Tick;
@@ -143,7 +145,7 @@ public partial class MainWindow : Window
 
     private static SolidColorBrush Brush(string color) => SkinTheme.Resolve(color);
     private static TextBlock Text(string text, double size, string color, bool bold = false) => new() { Text = text, FontSize = size, Foreground = Brush(color), FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal };
-    private static string Money(decimal value) => value.ToString("C2", Us);
+    private static string Money(decimal value) => SkinTheme.Settings.HideAmounts ? "••••" : value.ToString("C2", Us);
 
     private void RenderData(Consumption received)
     {
@@ -248,6 +250,8 @@ public partial class MainWindow : Window
     private async void Tick(object? sender, EventArgs e)
     {
         CheckSystemZone();
+        AdvanceTaskSettlement();
+        _ = RefreshArchivesAsync();
         EvaluateReminders();
         UpdateTimestamp();
         if (!closing && DateTimeOffset.Now - miniHistoryUpdated >= TimeSpan.FromMinutes(1)) { miniHistoryUpdated = DateTimeOffset.Now; await RefreshMiniHistoryAsync(); }
@@ -260,7 +264,7 @@ public partial class MainWindow : Window
     private void OpenSource(object sender, RoutedEventArgs e) { if (!App.Demo) monitor?.ShowLogin(); }
     private void DragHeader(object sender, MouseButtonEventArgs e)
     {
-        if (WindowDrag.TryMove(this, e)) SavePreferences();
+        if (!preferences.DesktopLocked && WindowDrag.TryMove(this, e)) { SnapDesktop(); SavePreferences(); }
     }
     private void TogglePin(object sender, RoutedEventArgs e) { Topmost = !Topmost; preferences.Topmost = Topmost; PinButton.Foreground = Brush(Topmost ? "#83D6EC" : "#7186A6"); SavePreferences(); }
     private void HideToTray(object sender, RoutedEventArgs e) { if (tray == null) Close(); else Hide(); }
@@ -269,6 +273,12 @@ public partial class MainWindow : Window
     private ContextMenu BuildSettingsMenu()
     {
         var menu = new ContextMenu();
+        var metrics = new MenuItem { Header = UiText.T("迷你显示指标", "Mini metrics") };
+        foreach (var item in MiniMetricItems(false)) metrics.Items.Add(item);
+        menu.Items.Add(metrics);
+        var activity = new MenuItem { Header = UiText.T("月记录 / 热力图…", "Months / Heatmap…") }; activity.Click += OpenMonthlyActivity; menu.Items.Add(activity);
+        var privacy = new MenuItem { Header = UiText.T("隐藏金额", "Hide amounts"), IsCheckable = true, IsChecked = preferences.HideAmounts }; privacy.Click += (_, _) => ToggleAmountPrivacy(); menu.Items.Add(privacy);
+        var marker = new MenuItem { Header = UiText.T("添加阶段标记…", "Add stage marker…"), IsEnabled = HasActiveMeasurement }; marker.Click += (_, _) => AddTaskMarker(); menu.Items.Add(marker);
         var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
         var taskHistory = new MenuItem { Header = UiText.T("任务计量 / 导出…", "Task measurements / Export…") }; taskHistory.Click += OpenTasks; menu.Items.Add(taskHistory);
         var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
@@ -338,6 +348,11 @@ public partial class MainWindow : Window
     private Forms.ContextMenuStrip BuildTrayMenu()
     {
         var menu = new Forms.ContextMenuStrip { Renderer = new DarkTrayRenderer(), BackColor = DarkTrayRenderer.Surface, ForeColor = DarkTrayRenderer.Text, Font = new System.Drawing.Font("Segoe UI", 9.5f), Padding = new Forms.Padding(4, 5, 4, 5), ShowImageMargin = false };
+        menu.Items.Add(UiText.T("恢复桌面操作（取消穿透/锁定）", "Restore desktop interaction"), null, (_, _) => Dispatcher.Invoke(RestoreDesktopInteraction));
+        menu.Items.Add(UiText.T("任务与桌面 / 月度归档…", "Tasks & desktop / Monthly archives…"), null, (_, _) => Dispatcher.Invoke(OpenWorkspace));
+        menu.Items.Add(UiText.T("隐藏 / 显示金额", "Hide / Show amounts"), null, (_, _) => Dispatcher.Invoke(ToggleAmountPrivacy));
+        menu.Items.Add(UiText.T("添加阶段标记…", "Add stage marker…"), null, (_, _) => Dispatcher.Invoke(AddTaskMarker));
+        menu.Items.Add(UiText.T("立即结束任务", "Finish task now"), null, (_, _) => Dispatcher.Invoke(FinishTaskImmediately));
         menu.Items.Add(UiText.Translate("设置…"), null, (_, _) => Dispatcher.Invoke(OpenPreferences));
         menu.Items.Add(UiText.T("关于…", "About…"), null, (_, _) => Dispatcher.Invoke(OpenAbout));
         menu.Items.Add(UiText.T("开始 / 结束任务", "Start / End task"), null, (_, _) => Dispatcher.Invoke(() => { Show(); Activate(); ToggleRecordPoint(this, new RoutedEventArgs()); }));
