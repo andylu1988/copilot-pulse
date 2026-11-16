@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Forms = System.Windows.Forms;
 
 namespace CopilotPulse;
@@ -133,6 +134,7 @@ public partial class MainWindow
         var checks = new List<DiagnosticCheck>();
         void Add(string zh, string en, string state, string zDetail, string eDetail) => checks.Add(new(UiText.T(zh, en), state, UiText.T(zDetail, eDetail)));
         Add("系统时区", "System timezone", "OK", "按 Windows 系统时区显示，配额按 UTC 月重置。", "Display follows Windows timezone; quota resets by UTC month.");
+        Add("处理器架构与能效优化", "Architecture and power profile", "OK", PlatformRuntime.OptimizationSummary(false), PlatformRuntime.OptimizationSummary(true));
         bool initialized = App.Demo, source = App.Demo, signedIn = App.Demo;
         try
         {
@@ -155,6 +157,45 @@ public partial class MainWindow
         if (!App.Demo) try { string probe = Path.Combine(App.DataDirectory, ".diagnostic-" + Guid.NewGuid().ToString("N")); File.WriteAllText(probe, "probe"); File.Delete(probe); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { writable = false; }
         Add("本机数据存储", "Local data storage", writable && taskStorageError.Length == 0 && history?.LastError == null ? "OK" : "ERROR", writable && taskStorageError.Length == 0 && history?.LastError == null ? "数据目录可写，现有历史与任务未报告错误。" : "存储不可写或历史/任务读取异常。检查磁盘和权限，保留原始文件。", writable && taskStorageError.Length == 0 && history?.LastError == null ? "Data folder writable; no history or task error reported." : "Storage unavailable or history/tasks unreadable. Check disk and permissions; retain original files.");
         Add("全局快捷键", "Global shortcuts", hotkeyStatus is "" or "OK" ? "OK" : "WARN", !preferences.GlobalHotkeys ? "未启用，可在设置中选择启用。" : hotkeyStatus == "OK" ? "四个快捷键已注册。" : "部分快捷键冲突，请关闭占用它们的程序后重新启用。", !preferences.GlobalHotkeys ? "Disabled. Enable from Settings." : hotkeyStatus == "OK" ? "Four shortcuts registered." : "Some shortcuts conflict. Disable the conflicting app then re-enable shortcuts.");
+        var tuck = DesktopTuckDiagnostic();
+        Add("桌面靠边收纳", "Desktop edge tuck", tuck.State, tuck.Zh, tuck.En);
         return new(DateTimeOffset.UtcNow, UpdatePolicy.Current.ToString(), TimeZoneInfo.Local.Id, App.Demo, checks);
+    }
+    private (string State, string Zh, string En) DesktopTuckDiagnostic()
+    {
+        if (!IsLoaded || !IsVisible)
+            return ("WARN", "窗口当前不可见，无法测量靠边收纳。", "The widget is not visible; edge-tuck geometry cannot be measured.");
+        try
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            var area = System.Windows.Forms.Screen.FromHandle(handle).WorkingArea;
+            var origin = PointToScreen(new Point());
+            var dpi = VisualTreeHelper.GetDpi(this);
+            double left = Math.Round(origin.X - area.Left);
+            double right = Math.Round(area.Right - (origin.X + ActualWidth * dpi.DpiScaleX));
+            double top = Math.Round(origin.Y - area.Top);
+            double bottom = Math.Round(area.Bottom - (origin.Y + ActualHeight * dpi.DpiScaleY));
+            double idle = Math.Max(0, (DateTimeOffset.UtcNow - desktopIdle).TotalSeconds);
+            bool child = OwnedWindows.Cast<Window>().Any(w => w.IsVisible);
+            string reason;
+            string state;
+            if (tucked) { state = "OK"; reason = UiText.T("已收纳，边条可展开。", "Tucked; the strip can reveal it."); }
+            else if (!preferences.EdgeTuck) { state = "WARN"; reason = UiText.T("自动收纳未启用。", "Automatic tuck is disabled."); }
+            else if (preferences.DesktopLocked) { state = "WARN"; reason = UiText.T("位置已锁定。", "Position is locked."); }
+            else if (clickThrough) { state = "WARN"; reason = UiText.T("鼠标穿透已开启。", "Click-through is enabled."); }
+            else if (!IsVisible) { state = "WARN"; reason = UiText.T("窗口已隐藏。", "The widget is hidden."); }
+            else if (IsMouseOver) { state = "WARN"; reason = UiText.T("鼠标仍在窗口上。", "The pointer is over the widget."); }
+            else if (child) { state = "WARN"; reason = UiText.T("有子窗口打开。", "A child window is open."); }
+            else if (idle < 3) { state = "WARN"; reason = UiText.T($"等待鼠标移开（还需约 {3 - idle:0.0} 秒）。", $"Waiting for the pointer to leave (about {3 - idle:0.0}s)."); }
+            else if (Math.Abs(left) >= 4 && Math.Abs(right) >= 4) { state = "WARN"; reason = UiText.T("窗口尚未贴住左/右边缘。", "The widget is not aligned to a left or right edge."); }
+            else { state = "OK"; reason = UiText.T("满足自动收纳条件。", "Automatic tuck conditions are met."); }
+            string zh = $"工作区 {area.Width}×{area.Height}px · DPI {dpi.DpiScaleX:0.##}×{dpi.DpiScaleY:0.##} · 左/右/上/下边距 {left:0}/{right:0}/{top:0}/{bottom:0}px · 鼠标闲置 {idle:0.0}s · 收纳={tucked} · 已锁定={preferences.DesktopLocked} · 穿透={clickThrough} · 鼠标悬停={IsMouseOver} · 子窗口={child} · 原因：{reason}";
+            string en = $"Work area {area.Width}×{area.Height}px · DPI {dpi.DpiScaleX:0.##}×{dpi.DpiScaleY:0.##} · edge margins L/R/T/B {left:0}/{right:0}/{top:0}/{bottom:0}px · pointer idle {idle:0.0}s · tucked={tucked} · locked={preferences.DesktopLocked} · click-through={clickThrough} · hover={IsMouseOver} · child={child} · reason: {reason}";
+            return (state, zh, en);
+        }
+        catch (InvalidOperationException)
+        {
+            return ("WARN", "窗口句柄尚未就绪，无法测量靠边收纳。", "The window handle is not ready; edge-tuck geometry cannot be measured.");
+        }
     }
 }

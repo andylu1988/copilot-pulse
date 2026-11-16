@@ -118,17 +118,17 @@ public sealed partial class MoneyReadout
         if (RecordedPeriod) title = p.Id == "shell" ? "> copilot usage --session" : "COPILOT / SESSION / USD";
         if (!string.IsNullOrEmpty(MetricCaption)) title = MetricCaption + " / USD";
         Label(title, 7, p.Muted, left, 8);
-        if (p.Id == "shell") dc.DrawLine(new Pen(DisplayArt.Brush(p.Edge), .7), new Point(13, 23), new Point(215, 23));
+        if (p.Id == "shell") dc.DrawLine(DisplayArt.Line(p.Edge, 1, .7), new Point(13, 23), new Point(215, 23));
         if (p.Id == "scope") Label("USD", 6.5, p.Accent, 195, 19);
         if (debugger)
         {
             Label("01", 6, p.Faint, 6, 10); Label("02", 6, p.Accent, 6, 44); Label("03", 6, p.Faint, 6, 81);
         }
         if (p.Id == "amber")
-            dc.DrawRoundedRectangle(DisplayArt.Brush(p.Bottom, .55), new Pen(DisplayArt.Brush(p.Edge, .6), .7), new Rect(9, 27, 210, 46), 1, 1);
+            dc.DrawRoundedRectangle(DisplayArt.Brush(p.Bottom, .55), DisplayArt.Line(p.Edge, .6, .7), new Rect(9, 27, 210, 46), 1, 1);
         var box = debugger ? new Rect(30, 29, 179, 42) : p.Id == "amber" ? new Rect(15, 32, 198, 35) : new Rect(13, 29, 202, 42);
         DisplayArt.Money(dc, box, amount, p, Phase, Pulse, dpi);
-        dc.DrawLine(new Pen(DisplayArt.Brush(p.Edge, .8), .7), new Point(left, 76), new Point(215, 76));
+        dc.DrawLine(DisplayArt.Line(p.Edge, .8, .7), new Point(left, 76), new Point(215, 76));
         bool example = Preview || state == "demo";
         string color = state is "live" or "syncing" || example ? p.Faint : "#E4B071";
         Label(GeekStateText, 6.4, color, left, 81);

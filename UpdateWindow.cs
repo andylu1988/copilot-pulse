@@ -38,7 +38,7 @@ internal sealed class UpdateWindow : Window
         SetResourceReference(BackgroundProperty, "SkinPanel"); SetResourceReference(ForegroundProperty, "SkinText");
         var body = new StackPanel { Margin = new Thickness(24) }; _ = new UtilitySkin(this, body);
         body.Children.Add(new TextBlock { Text = UiText.T("在线更新", "Online updates"), FontSize = 24, FontWeight = FontWeights.SemiBold });
-        body.Children.Add(new TextBlock { Text = UiText.T($"当前版本 {UpdatePolicy.Current} · Windows x64", $"Current version {UpdatePolicy.Current} · Windows x64"), Margin = new Thickness(0,10,0,12) });
+        body.Children.Add(new TextBlock { Text = UiText.T($"当前版本 {UpdatePolicy.Current} · {PlatformRuntime.RuntimeBadge(false)}", $"Current version {UpdatePolicy.Current} · {PlatformRuntime.RuntimeBadge(true)}"), Margin = new Thickness(0,10,0,12) });
         repo = new ComboBox { ItemsSource = new[] { "andylu1988/copilot-pulse", "andylu_microsoft/copilot-pulse" }, SelectedIndex = preferences.UpdateRepository == "andylu_microsoft/copilot-pulse" ? 1 : 0, MinHeight = 38, Padding = new Thickness(10,8,10,8) };
         repo.SetResourceReference(FrameworkElement.StyleProperty, "SkinComboBoxStyle");
         body.Children.Add(repo);
@@ -50,7 +50,7 @@ internal sealed class UpdateWindow : Window
         Add(install,"一键更新并重启","Update and restart"); install.FontWeight = FontWeights.SemiBold; install.SetResourceReference(Control.BorderBrushProperty,"SkinAccent"); Add(check,"检查更新","Check for updates");
         var browser = new Button(); Add(browser,"浏览器下载 ↗","Browser download ↗");
         browser.Click += (_, _) => Process.Start(new ProcessStartInfo(UpdatePolicy.ReleasePage(preferences.UpdateRepository)) { UseShellExecute = true });
-        body.Children.Add(new TextBlock { Text = UiText.T("每小时检查正式版本，未点击提醒满 48 小时后自动升级。点击“一键更新并重启”后自动检查、下载、校验、安装并重新打开；历史、登录和偏好设置保留。打开更新窗口会取消当前版本的自动安装。", "Checks hourly. Unopened notices install automatically after 48 hours. Update and restart checks, downloads and verifies SHA256, then silently installs and reopens the widget. History, sign-in and preferences are retained. Opening updates cancels automatic installation for the current version."), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        body.Children.Add(new TextBlock { Text = UiText.T("每小时检查正式版本，未点击提醒满 48 小时后自动升级。自动匹配 Windows x64 / ARM64 原生安装包（Windows on ARM 上的 x64 仿真客户端会自动升级为原生 ARM64 版）。点击“一键更新并重启”后自动检查、下载、校验、安装并重新打开；历史、登录和偏好设置保留。打开更新窗口会取消当前版本的自动安装。", "Checks hourly. Unopened notices install automatically after 48 hours. Automatically selects the native Windows x64 or ARM64 installer (emulated x64 on Windows on ARM upgrades to native ARM64). Update and restart checks, downloads and verifies SHA256, then silently installs and reopens the widget. History, sign-in and preferences are retained. Opening updates cancels automatic installation for the current version."), FontSize = 11, TextWrapping = TextWrapping.Wrap });
         check.Click += async (_, _) =>
         {
             if (busy) return;

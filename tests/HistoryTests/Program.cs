@@ -76,6 +76,9 @@ Check("new legacy samples are imported on a later launch", third.Imported == 1 &
 Check("merged output is chronological", new HistoryRepository(Path.Combine(shared, "history")).ReadAll().Select(x => x.Time).SequenceEqual(new[] { start, start.AddMinutes(1), start.AddMinutes(2), start.AddMinutes(4) }));
 Check("rewritten target is backed up before merging", Directory.GetFiles(Path.Combine(shared, "migration-backups"), "2026-09.jsonl", SearchOption.AllDirectories).Length == 1);
 Check("mini record delta defaults off", !new Preferences().MiniShowRecordDelta);
+Check("freshness appearance defaults on", new Preferences().FreshnessAppearance);
+var desktopSettings = System.Text.Json.JsonSerializer.Deserialize<Preferences>(System.Text.Json.JsonSerializer.Serialize(new Preferences { FreshnessAppearance = false, EdgeSnap = true, EdgeTuck = true, MiniDualMetrics = true, MiniSecondaryMetric = "7d", GrowthPulse = false }))!;
+Check("desktop appearance choices survive restart", !desktopSettings.FreshnessAppearance && desktopSettings.EdgeSnap && desktopSettings.EdgeTuck && desktopSettings.MiniDualMetrics && desktopSettings.MiniSecondaryMetric == "7d" && !desktopSettings.GrowthPulse);
 var miniRecordPreferences = new Preferences {
     MeasurementBaselineUtc = new DateTimeOffset(2026, 10, 20, 16, 30, 0, TimeSpan.Zero).ToString("O", System.Globalization.CultureInfo.InvariantCulture),
     MiniShowRecordDelta = true
@@ -251,14 +254,32 @@ Check("runtime version follows project version", UpdatePolicy.Current == UpdateP
 Check("four part assembly version normalized", UpdatePolicy.NormalizeVersion(new Version(1,11,2,0)).ToString() == "1.11.2");
 Check("missing installed library cannot report success", !UpdatePolicy.InstalledVersionMatches(Path.Combine(directory,"CopilotPulse.exe"), declaredVersion));
 string ReleaseJson(string version, string url, string digest, bool preview = false) => System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = preview, tag_name = "v" + version, assets = new[] { new { name = "CopilotPulse-Setup-" + version + "-x64.exe", browser_download_url = url, digest, size = 1024 } } });
-string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.15.0/CopilotPulse-Setup-1.15.0-x64.exe";
+string releaseUrl = "https://github.com/andylu_microsoft/copilot-pulse/releases/download/v1.16.0/CopilotPulse-Setup-1.16.0-x64.exe";
 string validDigest = "sha256:" + new string('a',64);
-Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)?.Version == new Version(1,15,0));
+Check("new stable installer selected", UpdatePolicy.Parse(ReleaseJson("1.16.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.X64)?.Version == new Version(1,16,0));
 Check("equal version ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(1,15,0)) == null);
 Check("older version ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", new Version(2,0,0)) == null);
-Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
-try { UpdatePolicy.Parse(ReleaseJson("1.15.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
-try { UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+Check("prerelease ignored", UpdatePolicy.Parse(ReleaseJson("1.16.0", releaseUrl, validDigest, true), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current) == null);
+try { UpdatePolicy.Parse(ReleaseJson("1.16.0", "https://evil.test/setup.exe", validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.X64); Check("unexpected host rejected", false); } catch (InvalidDataException) { Check("unexpected host rejected", true); }
+try { UpdatePolicy.Parse(ReleaseJson("1.16.0", releaseUrl, ""), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.X64); Check("missing digest rejected", false); } catch (InvalidDataException) { Check("missing digest rejected", true); }
+string DualReleaseJson(string version, bool includeX64, bool includeArm64)
+{
+    var list = new System.Collections.Generic.List<object>();
+    if (includeX64) list.Add(new { name = $"CopilotPulse-Setup-{version}-x64.exe", browser_download_url = $"https://github.com/andylu1988/copilot-pulse/releases/download/v{version}/CopilotPulse-Setup-{version}-x64.exe", digest = validDigest, size = 2048 });
+    if (includeArm64) list.Add(new { name = $"CopilotPulse-Setup-{version}-arm64.exe", browser_download_url = $"https://github.com/andylu1988/copilot-pulse/releases/download/v{version}/CopilotPulse-Setup-{version}-arm64.exe", digest = validDigest, size = 2048 });
+    return System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = false, tag_name = "v" + version, assets = list });
+}
+Check("native ARM64 selects arm64 installer", UpdatePolicy.Parse(DualReleaseJson("1.16.0", true, true), "andylu1988/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.Arm64)?.AssetName == "CopilotPulse-Setup-1.16.0-arm64.exe");
+Check("emulated x64 on ARM64 upgrades to native arm64 installer", UpdatePolicy.Parse(DualReleaseJson("1.16.0", true, true), "andylu1988/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.X64)?.AssetName == "CopilotPulse-Setup-1.16.0-arm64.exe");
+Check("emulated x64 on ARM64 falls back to x64 when arm64 asset absent", UpdatePolicy.Parse(DualReleaseJson("1.16.0", true, false), "andylu1988/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.X64)?.AssetName == "CopilotPulse-Setup-1.16.0-x64.exe");
+Check("x64 OS selects x64 installer in dual release", UpdatePolicy.Parse(DualReleaseJson("1.16.0", true, true), "andylu1988/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.X64)?.AssetName == "CopilotPulse-Setup-1.16.0-x64.exe");
+try { UpdatePolicy.Parse(DualReleaseJson("1.16.0", true, false), "andylu1988/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.Arm64); Check("native ARM64 rejects missing arm64 installer", false); } catch (InvalidDataException) { Check("native ARM64 rejects missing arm64 installer", true); }
+Check("ARM64 runtime badge zh/en", PlatformRuntime.RuntimeBadge(System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.Arm64, false).Contains("原生性能优化版") && PlatformRuntime.RuntimeBadge(System.Runtime.InteropServices.Architecture.Arm64, System.Runtime.InteropServices.Architecture.Arm64, true).Contains("Native Optimized"));
+Check("emulated x64 on ARM64 badge zh/en", PlatformRuntime.RuntimeBadge(System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.Arm64, false).Contains("仿真") && PlatformRuntime.RuntimeBadge(System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.Arm64, true).Contains("Emulated"));
+Check("minimized and unfocused utility stop animation", PlatformRuntime.EffectiveFps(60, false, true, true, System.Runtime.InteropServices.Architecture.Arm64, false, false) == 0 && PlatformRuntime.EffectiveFps(60, true, false, false, System.Runtime.InteropServices.Architecture.Arm64, false, false) == 0);
+Check("main widget keeps animating when unfocused", PlatformRuntime.EffectiveFps(60, false, false, false, System.Runtime.InteropServices.Architecture.Arm64, false, false) == 60);
+Check("energy saver and ARM64 battery pace FPS", PlatformRuntime.EffectiveFps(60, false, true, false, System.Runtime.InteropServices.Architecture.Arm64, false, true) == 15 && PlatformRuntime.EffectiveFps(60, false, true, false, System.Runtime.InteropServices.Architecture.Arm64, true, false) == 24 && PlatformRuntime.EffectiveFps(60, true, true, false, System.Runtime.InteropServices.Architecture.Arm64, false, false) == 20);
+Check("adaptive matrix scale honors tile size and ARM64 power", Math.Abs(PlatformRuntime.MatrixScale(220, 120, true, System.Runtime.InteropServices.Architecture.Arm64, true, false) - 1.0) < .001 && Math.Abs(PlatformRuntime.MatrixScale(880, 720, false, System.Runtime.InteropServices.Architecture.Arm64, false, false) - 0.75) < .001 && Math.Abs(PlatformRuntime.MatrixScale(880, 720, false, System.Runtime.InteropServices.Architecture.Arm64, true, false) - 0.65) < .001 && Math.Abs(PlatformRuntime.MatrixScale(880, 720, false, System.Runtime.InteropServices.Architecture.Arm64, true, true) - 0.6) < .001);
 string hashFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid()+".bin");
 File.WriteAllText(hashFile,"verified installer test");
 string expectedHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile)));
@@ -266,7 +287,7 @@ await UpdatePolicy.VerifyAsync(hashFile,expectedHash); Check("download hash veri
 try { await UpdatePolicy.VerifyAsync(hashFile,new string('0',64)); Check("tampered download rejected",false); } catch (InvalidDataException) { Check("tampered download rejected",true); }
 File.Delete(hashFile);
 var autoNow = new DateTimeOffset(2026,10,11,12,0,0,TimeSpan.FromHours(8));
-var candidate = UpdatePolicy.Parse(ReleaseJson("1.15.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current)!;
+var candidate = UpdatePolicy.Parse(ReleaseJson("1.16.0", releaseUrl, validDigest), "andylu_microsoft/copilot-pulse", UpdatePolicy.Current, System.Runtime.InteropServices.Architecture.X64, System.Runtime.InteropServices.Architecture.X64)!;
 var autoState = new AutoUpdateState();
 Check("initial hourly check due", AutoUpdatePolicy.CheckDue(autoState, autoNow));
 autoState.LastAttemptUtc = autoNow;
@@ -286,7 +307,7 @@ resumed.Acknowledged = true;
 Check("opening notice cancels automatic installation", !AutoUpdatePolicy.InstallDue(resumed,candidate,autoNow.AddDays(3),true));
 var acknowledged = System.Text.Json.JsonSerializer.Deserialize<AutoUpdateState>(System.Text.Json.JsonSerializer.Serialize(resumed))!;
 Check("acknowledgement survives restart", acknowledged.Acknowledged);
-AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,16,0)},candidate.Repository,autoNow.AddDays(3));
+AutoUpdatePolicy.Observe(acknowledged,candidate with {Version = new Version(1,17,0)},candidate.Repository,autoNow.AddDays(3));
 Check("different release gets full grace", !acknowledged.Acknowledged && acknowledged.FirstSeenUtc == autoNow.AddDays(3).ToUniversalTime());
 Check("mismatched candidate cannot install", !AutoUpdatePolicy.InstallDue(acknowledged,candidate,autoNow.AddDays(6),true));
 AutoUpdatePolicy.Observe(acknowledged,null,candidate.Repository,autoNow.AddDays(4));
@@ -304,4 +325,8 @@ catch (Exception error)
     Environment.ExitCode = 1;
 }
 
-namespace CopilotPulse { public static class App { public static string DataDirectory => Path.GetTempPath(); } }
+namespace CopilotPulse
+{
+    public static class App { public static string DataDirectory => Path.GetTempPath(); }
+    internal static class UiText { public static bool English => false; }
+}

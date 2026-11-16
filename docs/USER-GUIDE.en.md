@@ -1,10 +1,17 @@
-# User guide · v1.14.0
+# User guide · v1.15.0
 
 [Project overview](../README.md) · [Version history](UPDATES-SINCE-v1.12.0.md)
 
-## v1.14.0: task observations and desktop controls
+## v1.15.0 highlights: native Windows ARM64, power efficiency and desktop tuck
 
-**v1.14.0 is available.** Download the Windows x64 installer from GitHub or use Updates in the app to download, verify, install and restart automatically. Screenshots use the Matrix skin with isolated fictional data.
+**v1.15.0 is available.** Native Windows `x64` and `ARM64` self-contained installers are published on GitHub, and in-app **Online updates** automatically select, SHA256-verify, install and restart the matching architecture package (migrating emulated x64 installs on Windows on ARM to native ARM64). See the [full v1.15.0 release notes](RELEASE-v1.15.0.md).
+
+- **Native ARM64 & power-aware rendering**: `TieredPGO` builds, frozen render caches, `0 FPS` idle/minimized throttling, smooth battery / Energy Saver frame caps, and low-memory idle WebView2 targets.
+- **Immediate edge tuck & presets**: One-click left/right tuck with a clipped, hit-testable **24 DIP** strip, drag protection, **32 DIP** DPI-aware snap, center recovery, visible growth-pulse preview, four desktop display presets, data-freshness border colors, and launch at Windows sign-in.
+
+## Task observations and desktop controls
+
+Screenshots use the Matrix skin with isolated fictional data.
 
 ![Compact Matrix panel with fictional data](screenshots/v1.14.0/release-compact-en.png)
 
@@ -57,10 +64,10 @@ History supports local Today, rolling ranges and UTC quota months, hover, pinnin
 
 ## 安装、登录与数据 / Installation, sign-in and data
 
-1. 当前正式版为 [v1.14.0](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.14.0)，Windows 10 1809+ / Windows 11 x64，需 WebView2。
+1. 当前正式版为 [v1.15.0](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.15.0)，支持 Windows 10 1809+ / Windows 11（`x64` 与原生 `ARM64`），需 WebView2。
 2. 启动后点击 **连接 Microsoft 账户**，使用自己的、有源站权限的公司账户完成官方登录，等待首个成功同步。
 3. WebView2 尝试 Windows 公司账户 SSO，不保证复用浏览器会话或 PRT。安装包不含作者账号、会话或密钥。
-4. 正式版支持每小时检查、48 小时提醒期及下载校验后安装并重启客户端；Windows 无需重启。v1.14.0 正式版已启用在线更新。
+4. 正式版支持每小时检查、自动匹配 `x64` / `ARM64` 原生安装包、48 小时提醒期及下载校验后安装并重启客户端；Windows 无需重启。v1.15.0 正式版已启用双架构在线更新。
 
 ![首次连接步骤](screenshots/onboarding.png)
 
@@ -70,4 +77,4 @@ History supports local Today, rolling ranges and UTC quota months, hover, pinnin
 
 这是个人开发的非官方辅助工具，金额为源页面 INTERNAL USD，请以源站为准。本地文件未额外加密；匿名任务导出仍含时间、金额和任务 ID，分享前应检查。诊断报告排除账户、金额、凭据、Cookie 和网页正文。
 
-Install the stable x64 release, connect your own authorized corporate account, and wait for synchronization. WebView2 attempts Windows-account SSO; browser-session/PRT reuse is not guaranteed. No author credentials are included. Stable clients support hourly update checks and download / checksum / install / app restart; unopened notices trigger unattended installation after 48 hours. v1.14.0 supports in-app updates. Local unencrypted history, task and sampling files survive upgrades/uninstall; missing data cannot be backfilled. Anonymous task exports still contain timestamps, amounts and IDs. This is an unofficial observation tool; source readings remain authoritative.
+Install the stable `x64` or native `ARM64` release, connect your own authorized corporate account, and wait for synchronization. WebView2 attempts Windows-account SSO; browser-session/PRT reuse is not guaranteed. No author credentials are included. Stable clients support hourly architecture-aware update checks and download / checksum / install / app restart; unopened notices trigger unattended installation after 48 hours. v1.15.0 supports dual-architecture in-app updates. Local unencrypted history, task and sampling files survive upgrades/uninstall; missing data cannot be backfilled. Anonymous task exports still contain timestamps, amounts and IDs. This is an unofficial observation tool; source readings remain authoritative.

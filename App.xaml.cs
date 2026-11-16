@@ -7,6 +7,11 @@ namespace CopilotPulse;
 
 public partial class App : Application
 {
+    internal static void TraceStartup(string stage)
+    {
+        if (Environment.GetEnvironmentVariable("COPILOTPULSE_TRACE_STARTUP") is not string path || string.IsNullOrWhiteSpace(path)) return;
+        try { File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O} {stage}\n"); } catch { }
+    }
     private Mutex? mutex;
     private FileStream? storageLock;
     public static string DataDirectory { get; private set; } = DataStorage.SharedDirectory;
@@ -41,6 +46,7 @@ public partial class App : Application
             Shutdown(result); return;
         }
         base.OnStartup(e);
+        TraceStartup("startup");
         if (Array.IndexOf(e.Args, "--review-software") >= 0)
             System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         Demo = Array.IndexOf(e.Args, "--demo") >= 0;
@@ -76,6 +82,7 @@ public partial class App : Application
         int capture = Array.IndexOf(e.Args, "--capture");
         if (capture >= 0 && capture + 1 < e.Args.Length) CapturePath = Path.GetFullPath(e.Args[capture + 1]);
         mutex = new Mutex(true, "Local\\CopilotPulse" + (Demo || Smoke ? ".Test." + Environment.ProcessId : ""), out bool first);
+        TraceStartup("mutex");
         if (!first) { MessageBox.Show("Copilot Pulse 已在运行。请从系统托盘打开。", "Copilot Pulse"); Shutdown(); return; }
         if (!Demo) Directory.CreateDirectory(DataDirectory);
         if (!Demo && !Smoke)
@@ -84,6 +91,7 @@ public partial class App : Application
             try { storageLock = new FileStream(Path.Combine(DataDirectory, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
             catch (IOException) { MessageBox.Show("Copilot Pulse 已在运行。请从系统托盘打开。", "Copilot Pulse"); Shutdown(); return; }
             var migration = DataStorage.Migrate(DataDirectory, DataStorage.LegacySources());
+            TraceStartup("migration complete");
             if (migration.Imported > 0) HistoryAtStartup = true;
         }
         DispatcherUnhandledException += (_, args) =>
@@ -103,10 +111,13 @@ public partial class App : Application
         // and first-use font work when a Matrix page becomes visible.
         var startup = System.Diagnostics.Stopwatch.StartNew();
         DisplayArt.PrepareMatrix();
+        TraceStartup("matrix prepared");
         if (AppearanceReviewPath != null) { Directory.CreateDirectory(AppearanceReviewPath); File.WriteAllText(Path.Combine(AppearanceReviewPath, "atlas-timing.txt"), $"Atlas initialization: {startup.Elapsed.TotalMilliseconds:0.0} ms\n"); }
         var window = new MainWindow();
+        TraceStartup("window constructed");
         MainWindow = window;
         window.Show();
+        TraceStartup("window shown");
     }
 
     protected override void OnExit(ExitEventArgs e) { storageLock?.Dispose(); mutex?.Dispose(); base.OnExit(e); }

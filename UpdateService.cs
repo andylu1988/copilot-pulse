@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -26,26 +27,34 @@ public static class UpdatePolicy
     }
     public static string Repository(string value) => value == "andylu_microsoft/copilot-pulse" ? value : "andylu1988/copilot-pulse";
     public static string ReleasePage(string repository) => "https://github.com/" + Repository(repository) + "/releases/latest";
-    public static UpdateRelease? Parse(string json, string repository, Version current)
+    public static UpdateRelease? Parse(string json, string repository, Version current, Architecture? osArchitecture = null, Architecture? processArchitecture = null)
     {
         repository = Repository(repository);
+        var osArch = osArchitecture ?? PlatformRuntime.OsArchitecture;
+        var procArch = processArchitecture ?? PlatformRuntime.ProcessArchitecture;
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         if (root.GetProperty("draft").GetBoolean() || root.GetProperty("prerelease").GetBoolean()) return null;
         string tag = root.GetProperty("tag_name").GetString() ?? "";
         if (!Regex.IsMatch(tag, @"^v?\d+\.\d+\.\d+$") || !Version.TryParse(tag.TrimStart('v'), out var version) || version <= current) return null;
-        string name = $"CopilotPulse-Setup-{version}-x64.exe";
-        foreach (var asset in root.GetProperty("assets").EnumerateArray())
+        var candidates = new List<string> { $"CopilotPulse-Setup-{version}-{PlatformRuntime.InstallerArch(osArch)}.exe" };
+        if (osArch == Architecture.Arm64 && procArch != Architecture.Arm64)
+            candidates.Add($"CopilotPulse-Setup-{version}-x64.exe");
+        var assets = root.GetProperty("assets");
+        foreach (string name in candidates)
         {
-            if (asset.GetProperty("name").GetString() != name) continue;
-            string url = asset.GetProperty("browser_download_url").GetString() ?? "";
-            if (!url.StartsWith($"https://github.com/{repository}/releases/download/{tag}/", StringComparison.Ordinal) || !url.EndsWith("/" + name, StringComparison.Ordinal)) throw new InvalidDataException("Unexpected release download URL.");
-            string digest = asset.TryGetProperty("digest", out var hash) ? hash.GetString() ?? "" : "";
-            if (!Regex.IsMatch(digest, @"^sha256:[a-fA-F0-9]{64}$")) throw new InvalidDataException("Release has no SHA256 digest. Use the browser download option.");
-            if (asset.GetProperty("size").GetInt64() is <= 0 or > 209715200) throw new InvalidDataException("Unexpected installer size.");
-            return new UpdateRelease(version, tag, repository, name, url, digest[7..]);
+            foreach (var asset in assets.EnumerateArray())
+            {
+                if (asset.GetProperty("name").GetString() != name) continue;
+                string url = asset.GetProperty("browser_download_url").GetString() ?? "";
+                if (!url.StartsWith($"https://github.com/{repository}/releases/download/{tag}/", StringComparison.Ordinal) || !url.EndsWith("/" + name, StringComparison.Ordinal)) throw new InvalidDataException("Unexpected release download URL.");
+                string digest = asset.TryGetProperty("digest", out var hash) ? hash.GetString() ?? "" : "";
+                if (!Regex.IsMatch(digest, @"^sha256:[a-fA-F0-9]{64}$")) throw new InvalidDataException("Release has no SHA256 digest. Use the browser download option.");
+                if (asset.GetProperty("size").GetInt64() is <= 0 or > 209715200) throw new InvalidDataException("Unexpected installer size.");
+                return new UpdateRelease(version, tag, repository, name, url, digest[7..]);
+            }
         }
-        throw new InvalidDataException("This release has no Windows x64 installer.");
+        throw new InvalidDataException($"This release has no Windows {(osArch == Architecture.Arm64 ? "ARM64" : "x64")} installer.");
     }
     public static async Task VerifyAsync(string path, string digest)
     {

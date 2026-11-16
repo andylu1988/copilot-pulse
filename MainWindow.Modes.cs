@@ -33,6 +33,7 @@ public partial class MainWindow
         MiniHost.Visibility=mode=="mini"?Visibility.Visible:Visibility.Collapsed;
         DetailsPanel.Visibility=mode=="compact"?Visibility.Collapsed:Visibility.Visible;
         MiniTools.Visibility=Visibility.Collapsed;
+        RefreshOutlineGeometry();
         RefreshDisplayEffects();
         if(IsLoaded) Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle,new Action(KeepOnCurrentScreen));
     }
@@ -80,6 +81,7 @@ public partial class MainWindow
         if(effective=="live" && data!=null && DateTimeOffset.Now-data.FetchedAt>TimeSpan.FromSeconds(Math.Max(180,preferences.RefreshSeconds*3+30)))effective="stale";
         FullAmount.Update(data?.Total,effective,data?.FetchedAt);
         MiniDisplay.Update(ShowMiniTaskDelta ? miniBaselineDelta : ShowMiniHistoryDelta ? miniTrendDelta : data?.Total,effective,data?.FetchedAt,ShowMiniTaskDelta,MiniMetricCaption);
+        RefreshDesktopAppearance(effective);
     }
     private void RefreshDisplayEffects()
     {
@@ -90,7 +92,12 @@ public partial class MainWindow
         DependencyObject? node=e.OriginalSource as DependencyObject;
         while(node!=null) {if(node is Button)return;node=VisualTreeHelper.GetParent(node);}
         if(e.ClickCount==2) {SetDisplayMode(preferences.MiniReturnMode=="compact" ? "compact" : "full");e.Handled=true;return;}
-        if(e.LeftButton==MouseButtonState.Pressed && !preferences.DesktopLocked) {DragMove();SnapDesktop();SavePreferences();}
+        if(e.LeftButton==MouseButtonState.Pressed && !preferences.DesktopLocked)
+        {
+            BeginDesktopDrag();
+            try { e.Handled = true; DragMove(); }
+            finally { EndDesktopDrag(); }
+        }
     }
     private void MiniContextMenu(object sender,MouseButtonEventArgs e)
     {

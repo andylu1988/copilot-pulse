@@ -1,9 +1,18 @@
-﻿Copilot Pulse 1.14.0 · Windows 安装版
+﻿Copilot Pulse 1.15.0 · Windows 安装版（x64 / ARM64 原生性能优化版）
 
-安装：双击 CopilotPulse-Setup-1.14.0-x64.exe，按提示完成安装。
-支持 Windows 10（1809 或更新）/11 x64。默认按当前用户安装，不需要管理员权限。
+安装：
+- Intel / AMD 电脑双击 CopilotPulse-Setup-1.15.0-x64.exe。
+- Surface / 骁龙 Snapdragon X 等 Windows on ARM 电脑双击 CopilotPulse-Setup-1.15.0-arm64.exe（ARM64 原生性能优化版）。
+支持 Windows 10（1809 或更新）/ 11。默认按当前用户安装，不需要管理员权限。
 自带 .NET 运行环境；若电脑缺少 WebView2，安装程序会使用微软官方引导程序联网安装。
 桌面快捷方式可在安装过程中选择，开始菜单中也能打开组件。
+在线更新会自动匹配当前系统的 x64 或 ARM64 原生安装包；若在 Windows on ARM 上安装了旧版 x64 仿真客户端，点击在线更新会自动升级切换到原生 ARM64 版。
+
+ARM64 与能效优化：
+- 原生 ARM64 TieredPGO 编译，免除 Prism x64 指令转译开销。
+- 零分配冻结画刷/画笔/字体渲染缓存与 WriteableBitmap 矩阵雨复用缓冲，大幅降低 GC 与 Adreno 核显带宽占用。
+- 电源感知自适应帧率：窗口最小化或子窗口失焦自动停表（0 FPS），电池供电与系统节电模式下自动按能效档位平滑限帧。
+- 后台采集完成后自动将隐藏 WebView2 切换至低内存模式（Low Memory Target）。
 
 登录：默认尝试当前 Windows 主账号 SSO。企业账号提示来自本机，不内置任何人的账号。
 第一次使用若提示连接，请点击“连接 Microsoft 账户”，在微软官方页面选择自己的企业账号，按要求完成 MFA。
@@ -13,7 +22,7 @@
 
 历史：今天按本机 00:00 开始；配额月份按 UTC 00:00 划分，中国时区每月 1 日 08:00 重置。使用“月份 ▾”选择已有月份。
 
-使用：默认每 60 秒刷新。菜单中可以换肤、选择完整/紧凑/迷你模式，查看历史趋势。
+使用：默认每 60 秒刷新。菜单中可以换肤、选择完整/紧凑/迷你模式，设置迷你双指标、用量变化脉冲、新鲜度外框、桌面预设与贴边收纳。
 收起到托盘后仍可刷新；退出期间不采集，重启后继续追加历史。
 
 安装位置：%LOCALAPPDATA%\Programs\CopilotPulse
@@ -22,9 +31,9 @@
 升级前请从托盘菜单退出组件。安装新版和卸载默认保留上述个人数据。
 卸载入口：Windows 设置 → 应用 → 已安装的应用 → Copilot Pulse。
 
-分享：只需发送安装 EXE；本文件可一起发给对方。
+分享：只需发送对应架构的安装 EXE；本文件可一起发给对方。
 安装包不包含个人历史、用量、Cookie、密码或 API Key。美术资源已嵌入，运行不需要图像服务配置。
 此安装包尚未使用企业代码签名证书签名；若公司应用策略要求签名，需要由公司认可的渠道签名或分发。
 
-偏好设置：主卡片 ⋯ → 设置，或迷你框/托盘右键 → 设置。支持中英文、15–600 秒刷新、10–60 FPS 动画、百分比/金额警告、系统时区和网页链接。阈值点击应用保存，其余选择立即保存。可从背景、普通文字或金额区域拖动窗口。
-Preferences: open Settings from the widget or tray menu. Chinese/English, refresh interval, animation FPS, usage warnings, local timezone and web links are available.
+偏好设置：主卡片 ⋯ → 设置，或迷你框/托盘右键 → 设置。支持中英文、开机自启、15–600 秒刷新、10–60 FPS 动画、减少动态效果、百分比/金额警告、系统时区和网页链接。阈值点击应用保存，其余选择立即保存。可从背景、普通文字或金额区域拖动窗口。
+Preferences: open Settings from the widget or tray menu. Native Windows x64 and ARM64 installers, Chinese/English, startup launch, refresh interval, animation FPS, power-aware ARM64 rendering, usage warnings, local timezone and web links are available.

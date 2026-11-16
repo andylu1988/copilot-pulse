@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace CopilotPulse;
 public partial class MainWindow
 {
 
-    private bool clickThrough, automaticMove, fullscreenHidden, tucked;
+    private bool clickThrough, automaticMove, fullscreenHidden, tucked, tuckedOnRightEdge, desktopDragging;
     private double untuckedLeft;
     private DateTimeOffset desktopIdle = DateTimeOffset.UtcNow, archiveDue;
     private readonly DispatcherTimer desktopTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
@@ -34,18 +34,18 @@ public partial class MainWindow
         MouseEnter += (_, _) => { desktopIdle = DateTimeOffset.UtcNow; RevealTucked(); };
         MouseMove += (_, _) => desktopIdle = DateTimeOffset.UtcNow;
         _ = RefreshArchivesAsync();
-        if (!App.Demo && !App.Smoke && preferences.LastSeenVersion != "1.14.0-local")
+        if (!App.Demo && !App.Smoke && preferences.LastSeenVersion != "1.15.0")
             Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(ShowWhatsNew));
     }
     private void ShowWhatsNew()
     {
-        var window = new Window { Title = UiText.T("这次改了什么 · 本地预览", "What's new · Local preview"), Width = 540, SizeToContent = SizeToContent.Height, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Icon = BrandIcon.Window };
+        var window = new Window { Title = UiText.T("这次改了什么 · v1.15.0", "What's new · v1.15.0"), Width = 540, SizeToContent = SizeToContent.Height, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Icon = BrandIcon.Window };
         var body = new StackPanel { Margin = new Thickness(24) }; _ = new UtilitySkin(window, body);
-        body.Children.Add(new TextBlock { Text = UiText.T("1.14 本地功能预览", "1.14 Local feature preview"), FontSize = 22, Margin = new Thickness(0, 0, 0, 14) });
-        body.Children.Add(new TextBlock { Text = UiText.T("• 任务延迟结算、常用模板和阶段标记\n• 迷你双指标、隐藏金额与用量脉冲\n• 每日热力图、月度归档和桌面收纳", "• Delayed settlement, templates and timeline markers\n• Mini dual metrics, privacy and growth pulse\n• Daily heatmap, monthly archives and desktop tidy"), TextWrapping = TextWrapping.Wrap, LineHeight = 25 });
-        body.Children.Add(InsightUi.Button(UiText.T("打开任务与桌面设置", "Open task & desktop settings"), () => { window.Close(); OpenWorkspace(); }));
+        body.Children.Add(new TextBlock { Text = UiText.T("v1.15.0 更新要点", "What's new in v1.15.0"), FontSize = 22, Margin = new Thickness(0, 0, 0, 14) });
+        body.Children.Add(new TextBlock { Text = UiText.T("• 原生 Windows ARM64 / x64 双架构与在线自动切换\n• 电源感知自适应帧率、冻结渲染缓存与后台低内存采集\n• 一键贴边收纳与中央恢复、桌面显示预设与可见增长脉冲\n• 数据新鲜度外框、开机启动与分类设置页", "• Native Windows ARM64 / x64 packages and automatic arch upgrade\n• Power-aware FPS pacing, frozen render caches and idle WebView2 memory target\n• Immediate edge tuck & center recovery, desktop presets and visible growth pulse\n• Data freshness frame, launch at sign-in and organized settings"), TextWrapping = TextWrapping.Wrap, LineHeight = 25 });
+        body.Children.Add(InsightUi.Button(UiText.T("打开桌面与收纳设置", "Open desktop & tuck settings"), () => { window.Close(); OpenWorkspace(); }));
         body.Children.Add(InsightUi.Button(UiText.T("知道了", "Got it"), () => window.Close()));
-        window.Closed += (_, _) => { preferences.LastSeenVersion = "1.14.0-local"; SavePreferences(); };
+        window.Closed += (_, _) => { preferences.LastSeenVersion = "1.15.0"; SavePreferences(); };
         window.Show();
     }
     private void ToggleAmountPrivacy()
@@ -78,25 +78,135 @@ public partial class MainWindow
         SetClickThrough(false); preferences.DesktopLocked = false; fullscreenHidden = false;
         RevealTucked(); Show(); Activate(); SavePreferences();
     }
+    private void TuckedStripEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        desktopIdle = DateTimeOffset.UtcNow;
+        RevealTucked();
+    }
+    private void TuckedStripClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        desktopIdle = DateTimeOffset.UtcNow;
+        RevealTucked();
+        Show(); Activate();
+        ShowDesktopStatus(UiText.T("已展开 Copilot Pulse", "Copilot Pulse revealed"));
+        e.Handled = true;
+    }
     private void RevealTucked()
     {
-        if (!tucked) return;
-        automaticMove = true; Left = untuckedLeft; tucked = false; automaticMove = false;
+        bool wasTucked = tucked;
+        if (tucked)
+        {
+            automaticMove = true; Left = untuckedLeft; tucked = false; automaticMove = false;
+        }
+        TuckedStrip.Visibility = Visibility.Collapsed;
+        TuckedStrip.Opacity = 0;
+        DesktopRoot.Clip = null;
+        desktopIdle = DateTimeOffset.UtcNow;
+        if (wasTucked) ShowDesktopStatus(UiText.T("已展开 Copilot Pulse", "Copilot Pulse revealed"));
+    }
+    private void BeginDesktopDrag()
+    {
+        RevealTucked();
+        desktopDragging = true;
+    }
+    private void EndDesktopDrag()
+    {
+        desktopDragging = false;
+        desktopIdle = DateTimeOffset.UtcNow;
+        SnapDesktop();
+        untuckedLeft = Left;
+        SavePreferences();
+    }
+    private void DesktopLocationChanged()
+    {
+        if (!IsLoaded || automaticMove) return;
+        // A user/external move invalidates the old hidden position. Never jump back to it.
+        if (tucked)
+        {
+            tucked = false;
+            TuckedStrip.Visibility = Visibility.Collapsed;
+            TuckedStrip.Opacity = 0;
+            DesktopRoot.Clip = null;
+        }
+        untuckedLeft = Left;
+        desktopIdle = DateTimeOffset.UtcNow;
+        if (!App.Demo && !App.Smoke) { preferences.Left = Left; preferences.Top = Top; }
+    }
+    private void CenterDesktop()
+    {
+        RevealTucked();
+        preferences.EdgeTuck = false;
+        preferences.HideForFullscreen = false;
+        fullscreenHidden = false;
+        var area = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle).WorkingArea;
+        var origin = PointToScreen(new Point()); var dpi = VisualTreeHelper.GetDpi(this);
+        Left += (area.Left + (area.Width - ActualWidth * dpi.DpiScaleX) / 2 - origin.X) / dpi.DpiScaleX;
+        Top += (area.Top + (area.Height - ActualHeight * dpi.DpiScaleY) / 2 - origin.Y) / dpi.DpiScaleY;
+        Show(); Activate(); SavePreferences();
+        ShowDesktopStatus(UiText.T("已移回中央 · 自动收纳已关闭", "Centered · automatic tuck is off"));
+    }
+    private void ConfigureTuckedStrip(bool dockRight)
+    {
+        TuckedStrip.HorizontalAlignment = dockRight ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        TuckedStrip.CornerRadius = dockRight ? new CornerRadius(0, 7, 7, 0) : new CornerRadius(7, 0, 0, 7);
+        TuckedAccent.HorizontalAlignment = dockRight ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        TuckedAccent.Margin = dockRight ? new Thickness(10, 10, 0, 10) : new Thickness(0, 10, 10, 10);
+        TuckedArrow.Text = dockRight ? "‹" : "›";
+        TuckedStrip.ToolTip = UiText.T(dockRight ? "点击或移入展开 Copilot Pulse（右侧收纳）" : "点击或移入展开 Copilot Pulse（左侧收纳）",
+            dockRight ? "Click or hover to reveal Copilot Pulse (tucked right)" : "Click or hover to reveal Copilot Pulse (tucked left)");
+        System.Windows.Automation.AutomationProperties.SetName(TuckedStrip, UiText.T("Copilot Pulse 收纳边条", "Copilot Pulse tuck strip"));
+    }
+    private void TuckAtEdge(bool dockRight, bool showStatus)
+    {
+        if (tucked) return;
+        var area = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle).WorkingArea;
+        var origin = PointToScreen(new Point());
+        var dpi = VisualTreeHelper.GetDpi(this);
+        double targetX = dockRight
+            ? area.Right - 24 * dpi.DpiScaleX
+            : area.Left - (ActualWidth - 24) * dpi.DpiScaleX;
+        untuckedLeft = Left;
+        automaticMove = true;
+        Left += (targetX - origin.X) / dpi.DpiScaleX;
+        tucked = true;
+        tuckedOnRightEdge = dockRight;
+        automaticMove = false;
+        ConfigureTuckedStrip(dockRight);
+        TuckedStrip.Visibility = Visibility.Visible;
+        TuckedStrip.Opacity = 1;
+        // Off-screen content must not leak onto an adjacent monitor.
+        DesktopRoot.Clip = new RectangleGeometry(new Rect(dockRight ? 0 : Math.Max(0, ActualWidth - 24), 0, 24, ActualHeight));
+        if (showStatus)
+            ShowDesktopStatus(UiText.T(dockRight ? "已收纳到右侧 · 移入或点击边条展开" : "已收纳到左侧 · 移入或点击边条展开",
+                dockRight ? "Tucked right · hover or click the strip to reveal" : "Tucked left · hover or click the strip to reveal"));
+    }
+    private void TuckDesktopNow(bool dockRight)
+    {
+        RevealTucked();
+        SetClickThrough(false);
+        preferences.DesktopLocked = false;
+        preferences.EdgeTuck = true;
+        preferences.EdgeSnap = true;
+        DockDesktop(dockRight);
+        UpdateLayout();
+        TuckAtEdge(dockRight, true);
+        SavePreferences();
     }
     private void SnapDesktop()
     {
         if (!preferences.EdgeSnap || preferences.DesktopLocked || tucked) return;
         var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle).WorkingArea;
         var origin = PointToScreen(new Point()); var dpi = VisualTreeHelper.GetDpi(this);
-        if (Math.Abs(origin.X - screen.Left) < 22) Left += (screen.Left - origin.X) / dpi.DpiScaleX;
-        else if (Math.Abs(origin.X + ActualWidth * dpi.DpiScaleX - screen.Right) < 22) Left += (screen.Right - origin.X - ActualWidth * dpi.DpiScaleX) / dpi.DpiScaleX;
-        if (Math.Abs(origin.Y - screen.Top) < 22) Top += (screen.Top - origin.Y) / dpi.DpiScaleY;
-        else if (Math.Abs(origin.Y + ActualHeight * dpi.DpiScaleY - screen.Bottom) < 22) Top += (screen.Bottom - origin.Y - ActualHeight * dpi.DpiScaleY) / dpi.DpiScaleY;
+        double snapX = 32 * dpi.DpiScaleX, snapY = 32 * dpi.DpiScaleY;
+        if (Math.Abs(origin.X - screen.Left) < snapX) Left += (screen.Left - origin.X) / dpi.DpiScaleX;
+        else if (Math.Abs(origin.X + ActualWidth * dpi.DpiScaleX - screen.Right) < snapX) Left += (screen.Right - origin.X - ActualWidth * dpi.DpiScaleX) / dpi.DpiScaleX;
+        if (Math.Abs(origin.Y - screen.Top) < snapY) Top += (screen.Top - origin.Y) / dpi.DpiScaleY;
+        else if (Math.Abs(origin.Y + ActualHeight * dpi.DpiScaleY - screen.Bottom) < snapY) Top += (screen.Bottom - origin.Y - ActualHeight * dpi.DpiScaleY) / dpi.DpiScaleY;
         SavePreferences();
     }
     private void DesktopTick()
     {
-        if (closing) return;
+        if (closing || desktopDragging || System.Windows.Input.Mouse.LeftButton == System.Windows.Input.MouseButtonState.Pressed) return;
         bool full = false;
         var foreground = GetForegroundWindow(); var own = new WindowInteropHelper(this).Handle;
         if (preferences.HideForFullscreen && foreground != own && foreground != IntPtr.Zero && GetWindowRect(foreground, out var rect))
@@ -114,7 +224,9 @@ public partial class MainWindow
             var area = System.Windows.Forms.Screen.FromHandle(own).WorkingArea;
             var origin = PointToScreen(new Point()); var dpi = VisualTreeHelper.GetDpi(this);
             bool left = Math.Abs(origin.X - area.Left) < 4, right = Math.Abs(origin.X + ActualWidth * dpi.DpiScaleX - area.Right) < 4;
-            if (left || right) { untuckedLeft = Left; automaticMove = true; Left += (left ? -(ActualWidth - 8) : ActualWidth - 8); tucked = true; automaticMove = false; }
+            // Keep 24 DIPs, including the 8–10 DIP transparent window margin.
+            // Previously all 8 remaining DIPs could be transparent and unclickable.
+            if (left || right) TuckAtEdge(right, false);
         }
     }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, System.Text.StringBuilder name, int count);
@@ -150,25 +262,57 @@ public partial class MainWindow
     {
         OpenPreferences(); settingsWindow!.SelectPageForReview("desktop");
     }
-    private UIElement BuildDesktopOptions(Window window)
+    private UIElement BuildDesktopOptions(Window window, string section)
     {
         var options = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
+        foreach (var type in new[] { typeof(Expander), typeof(CheckBox) })
+        {
+            var style = new Style(type);
+            style.Setters.Add(new Setter(Control.ForegroundProperty, SkinTheme.Resolve(SkinTheme.Current.Text)));
+            options.Resources.Add(type, style);
+        }
+        void Note(string zh, string en) => options.Children.Add(new TextBlock { Text = UiText.T(zh, en), TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 4, 0, 12) });
         void Toggle(string zh, string en, bool initial, Action<bool> change)
-        { var box = new CheckBox { Content = UiText.T(zh, en), IsChecked = initial, Margin = new Thickness(0, 7, 0, 7) }; box.SetResourceReference(Control.ForegroundProperty, "SkinText"); box.Checked += (_, _) => { change(true); SavePreferences(); }; box.Unchecked += (_, _) => { change(false); SavePreferences(); }; options.Children.Add(box); }
-        Toggle("结束后等待 3 次成功采样（最多 10 分钟）", "Wait for 3 new samples after ending (up to 10 min)", preferences.DelayedSettlement, v => preferences.DelayedSettlement = v);
-        options.Children.Add(new TextBlock { Text = UiText.T("延迟结算仍可能包含其他并行任务的用量。超时会标记为未确认。", "Delayed settlement may include parallel activity. Timeout results remain unconfirmed."), TextWrapping = TextWrapping.Wrap, FontSize = 11 });
-        Toggle("迷你双指标（主界面“迷你 ▾”选择主数字）", "Mini dual metrics (choose primary on main panel)", preferences.MiniDualMetrics, v => { preferences.MiniDualMetrics = v; RefreshUsageProgress(); });
-        Toggle("隐藏金额（展示 / 共享屏幕）", "Hide amounts (presentation / screen sharing)", preferences.HideAmounts, v => { if (preferences.HideAmounts != v) ToggleAmountPrivacy(); });
-        Toggle("用量增长时短暂脉冲", "Pulse when observed usage grows", preferences.GrowthPulse, v => { preferences.GrowthPulse = v; RefreshDisplayEffects(); });
-        Toggle("锁定桌面位置", "Lock desktop position", preferences.DesktopLocked, v => { RevealTucked(); preferences.DesktopLocked = v; });
-        Toggle("窗口贴边吸附", "Snap to screen edges", preferences.EdgeSnap, v => preferences.EdgeSnap = v);
-        Toggle("贴边 3 秒后收纳，鼠标移入展开", "Tuck after 3s at an edge; hover to reveal", preferences.EdgeTuck, v => { preferences.EdgeTuck = v; if (!v) RevealTucked(); });
-        Toggle("全屏应用时自动隐藏", "Hide for fullscreen apps", preferences.HideForFullscreen, v => preferences.HideForFullscreen = v);
-        options.Children.Add(InsightUi.Button(UiText.T("开启鼠标穿透（托盘恢复 / Ctrl+Alt+P）", "Enable click-through (tray / Ctrl+Alt+P restores)"), () => { window.Close(); SetClickThrough(true); }));
-        options.Children.Add(InsightUi.Button(UiText.T("添加任务时间线标记…", "Add task timeline marker…"), AddTaskMarker));
-        options.Children.Add(InsightUi.Button(UiText.T("立即结束任务（跳过等待）", "Finish task now (skip waiting)"), FinishTaskImmediately));
-        options.Children.Add(InsightUi.Button(UiText.T("计量记录 / 再测一次…", "Measurement history / Measure again…"), () => OpenTasks(this, new RoutedEventArgs())));
-        options.Children.Add(InsightUi.Button(UiText.T("查看这次更新", "What's new"), ShowWhatsNew));
+        {
+            var box = new CheckBox { Content = new TextBlock { Text = UiText.T(zh, en), TextWrapping = TextWrapping.Wrap }, IsChecked = initial, Margin = new Thickness(0, 7, 0, 7) };
+            box.SetResourceReference(Control.ForegroundProperty, "SkinText");
+            box.Click += (_, _) => { change(box.IsChecked == true); SavePreferences(); };
+            options.Children.Add(box);
+        }
+        if (section == "measurement")
+        {
+            Toggle("结束任务后等待数据更新", "Wait for source updates after ending a task", preferences.DelayedSettlement, v => preferences.DelayedSettlement = v);
+            Note("等待 3 次成功采样，最多 10 分钟；可能包含并行任务用量。", "Wait for 3 successful samples, up to 10 minutes; concurrent usage may be included.");
+            options.Children.Add(InsightUi.Button(UiText.T("打开任务计量记录…", "Open task measurements…"), () => OpenTasks(this, new RoutedEventArgs())));
+            return options;
+        }
+        if (section == "appearance")
+        {
+            Toggle("迷你模式显示双指标", "Show two metrics in mini mode", preferences.MiniDualMetrics, v => { preferences.MiniDualMetrics = v; RefreshUsageProgress(); });
+            Toggle("隐藏金额（屏幕分享）", "Hide amounts (screen sharing)", preferences.HideAmounts, v => { if (preferences.HideAmounts != v) ToggleAmountPrivacy(); });
+            Toggle("用量增长脉冲", "Usage growth pulse", preferences.GrowthPulse, v => { preferences.GrowthPulse = v; RefreshDisplayEffects(); RefreshNumericState(); });
+            options.Children.Add(InsightUi.Button(UiText.T("预览用量增长脉冲", "Preview usage growth pulse"), PreviewGrowthPulse));
+            Toggle("边框显示数据新鲜度", "Show data freshness in the frame", preferences.FreshnessAppearance, v => { preferences.FreshnessAppearance = v; RefreshNumericState(); });
+            var presets = new StackPanel(); AddDesktopPresets(presets, window);
+            options.Children.Add(new Expander { Header = UiText.T("桌面显示预设", "Desktop display presets"), Content = presets, Margin = new Thickness(0, 12, 0, 0) });
+            return options;
+        }
+        var actions = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
+        foreach (bool right in new[] { false, true })
+            actions.Children.Add(InsightUi.Button(UiText.T(right ? "靠右并收纳" : "靠左并收纳", right ? "Tuck right" : "Tuck left"), () => { window.Close(); TuckDesktopNow(right); }));
+        options.Children.Add(actions);
+        options.Children.Add(InsightUi.Button(UiText.T("移回中央，停止自动隐藏", "Center and stop automatic hiding"), () => { window.Close(); CenterDesktop(); }));
+        Note("收纳后，移入屏幕边条即可展开。拖回中央后保持展开。", "Hover over the edge strip to reveal. Drag back to the center to keep the panel open.");
+        Toggle("拖近屏幕边缘时吸附", "Snap near screen edges", preferences.EdgeSnap, v => { preferences.EdgeSnap = v; if (!v) { preferences.EdgeTuck = false; RevealTucked(); settingsWindow?.RebuildDesktopPage(); } });
+        Toggle("贴边后自动收纳", "Automatically tuck at a screen edge", preferences.EdgeTuck, v => { preferences.EdgeTuck = v; if (v) preferences.EdgeSnap = true; else RevealTucked(); settingsWindow?.RebuildDesktopPage(); });
+        Note("开启后：贴近左 / 右边缘，松开鼠标并移开 3 秒。拖动和打开设置时暂停收纳。", "When enabled: dock left or right, release and move the pointer away for 3 seconds. Tuck pauses during dragging and while settings are open.");
+        Toggle("锁定窗口位置", "Lock window position", preferences.DesktopLocked, v => { RevealTucked(); preferences.DesktopLocked = v; });
+        var advanced = new StackPanel();
+        var hide = new CheckBox { Content = UiText.T("全屏应用时隐藏", "Hide for fullscreen apps"), IsChecked = preferences.HideForFullscreen, Margin = new Thickness(0, 8, 0, 8) };
+        hide.Click += (_, _) => { preferences.HideForFullscreen = hide.IsChecked == true; SavePreferences(); }; advanced.Children.Add(hide);
+        advanced.Children.Add(InsightUi.Button(UiText.T("开启鼠标穿透", "Enable click-through"), () => { window.Close(); SetClickThrough(true); }));
+        advanced.Children.Add(new TextBlock { Text = UiText.T("穿透后通过托盘或 Ctrl+Alt+P 恢复操作。", "Restore interaction from the tray or Ctrl+Alt+P."), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        options.Children.Add(new Expander { Header = UiText.T("高级窗口行为", "Advanced window behavior"), Content = advanced, Margin = new Thickness(0, 16, 0, 0) });
         return options;
     }
     private async Task LoadActivityAsync(StackPanel panel, Window owner)

@@ -74,6 +74,7 @@ public sealed class Preferences
     public List<string> TaskTemplates { get; set; } = new();
     public bool HideAmounts { get; set; }
     public bool GrowthPulse { get; set; } = true;
+    public bool FreshnessAppearance { get; set; } = true;
     public bool DesktopLocked { get; set; }
     public bool EdgeSnap { get; set; } = true;
     public bool EdgeTuck { get; set; }

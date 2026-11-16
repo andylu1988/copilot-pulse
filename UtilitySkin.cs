@@ -12,7 +12,7 @@ internal sealed class UtilitySkin
 {
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
     private readonly Border surface = new(), shade = new();
-    private readonly Atmosphere atmosphere = new() { IsHitTestVisible = false };
+    private readonly Atmosphere atmosphere = new() { IsHitTestVisible = false, IsUtilityBackdrop = true };
     internal UtilitySkin(Window window, UIElement content)
     {
         window.SetResourceReference(Window.BackgroundProperty, "SkinPanel");
@@ -26,6 +26,7 @@ internal sealed class UtilitySkin
         GlassChrome.SetSource(window, surface);
         window.SizeChanged += (_, _) => Apply();
         window.Activated += (_, _) => Apply();
+        window.Deactivated += (_, _) => atmosphere.RefreshAppearance();
         ApplyTitleBar(window);
         Apply();
     }

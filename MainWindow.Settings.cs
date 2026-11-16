@@ -87,7 +87,7 @@ internal sealed partial class SettingsWindow : Window
 {
     private readonly Preferences preferences;
     private readonly Action changed;
-    private readonly Func<Window, UIElement>? desktopOptions;
+    private readonly Func<Window, string, UIElement>? desktopOptions;
     private bool building;
     private readonly Action appearanceChanged;
     internal SkinPicker SkinEditor { get; private set; } = null!;
@@ -95,7 +95,7 @@ internal sealed partial class SettingsWindow : Window
     private TextBlock? zoneText, resetText;
     private TextBox? threshold;
     private TextBlock? error;
-    internal SettingsWindow(Preferences preferences, Action changed, Action? appearanceChanged = null, Func<Window, UIElement>? desktopOptions = null)
+    internal SettingsWindow(Preferences preferences, Action changed, Action? appearanceChanged = null, Func<Window, string, UIElement>? desktopOptions = null)
     {
         this.desktopOptions = desktopOptions; this.preferences = preferences; this.changed = changed; this.appearanceChanged = appearanceChanged ?? changed;
         Title = UiText.T("Copilot Pulse · 设置", "Copilot Pulse · Settings"); Icon = BrandIcon.Window;
@@ -120,6 +120,7 @@ internal sealed partial class SettingsWindow : Window
     {
         building = true; BeginPages();
         Page("general", "常规", "General", "语言和采样频率", "Language and sampling interval");
+        BuildStartupOption();
         Section("语言 / Language", "Language / 语言");
         Choices(new[] { "简体中文", "English" }, preferences.Language == "en" ? 1 : 0, i => { preferences.Language = i == 1 ? "en" : "zh-CN"; changed(); Build(); });
         Section("数据刷新频率", "Data refresh interval");
@@ -132,10 +133,13 @@ internal sealed partial class SettingsWindow : Window
         var motion = new CheckBox { Content = UiText.T("减少动态效果", "Reduce motion"), IsChecked = preferences.ReduceMotion, Margin = new Thickness(0, 4, 0, 0) };
         motion.SetResourceReference(Control.ForegroundProperty, "SkinText");
         motion.Click += (_, _) => { preferences.ReduceMotion = motion.IsChecked == true; changed(); }; body.Children.Add(motion);
+        Section("架构与能效优化", "Architecture & power efficiency");
+        Label(PlatformRuntime.OptimizationSummary(), 11);
         Section("数字字体", "Number font");
         Choices(Array.ConvertAll(SettingsPolicy.NumberFonts, f => f == "skin" ? UiText.T("跟随皮肤（液晶 / 像素 / 辉光管）", "Follow skin (LCD / pixels / nixie)") : f), Array.IndexOf(SettingsPolicy.NumberFonts, preferences.NumberFont), i => { preferences.NumberFont = SettingsPolicy.NumberFonts[i]; changed(); Build(); });
         var fontPreview = Label("$1,234.56  ·  78.90%", 26);
         fontPreview.FontFamily = new FontFamily(SettingsPolicy.ResolveFont("Segoe UI", preferences));
+        if (desktopOptions != null) body.Children.Add(desktopOptions(this, "appearance"));
         Page("warnings", "警告", "Warnings", "配置用量阈值", "Configure usage thresholds");
         Section("用量警告", "Usage warnings");
         var warning = new CheckBox { Content = UiText.T("启用警告（界面提示 + 系统通知）", "Enable warnings (widget + system notification)"), IsChecked = preferences.WarningEnabled, Margin = new Thickness(0, 0, 0, 9) };
@@ -152,7 +156,8 @@ internal sealed partial class SettingsWindow : Window
         error = Label("", 11); error.Foreground = Brushes.OrangeRed;
         Label(UiText.T("百分比范围 1–100；金额范围 $0.01–$1,000,000,000。未提供具体限额的账户仅支持金额警告。提醒冷却跨重启保存，静音不隐藏界面警告。", "Percent: 1–100; amount: $0.01–$1,000,000,000. Accounts without a numeric quota support amount warnings only. Reminder cooldown persists after restart; muted notifications do not hide widget warnings."), 10);
         BuildReminderSettings();
-        Page("measurement", "计量与时间", "Measurement", "本机时区与自定义基准", "Local timezone and custom baseline");
+        Page("measurement", "任务计量与时间", "Tasks & time", "任务结算、本机时区与自定义基准", "Task settlement, local timezone and baseline");
+        if (desktopOptions != null) body.Children.Add(desktopOptions(this, "measurement"));
         Section("系统时间与配额重置", "System time and quota reset"); zoneText = Label("", 11); resetText = Label("", 11); UpdateClock();
         Section("基准周期增量", "Baseline Period Delta");
         string baselineDate = DateTime.Today.ToString("yyyy-MM-dd"), baselineTime = "00:00";
@@ -169,7 +174,7 @@ internal sealed partial class SettingsWindow : Window
         baselineClear.Click += (_, _) => { preferences.MeasurementBaselineUtc = ""; dateBox.Text = DateTime.Today.ToString("yyyy-MM-dd"); timeBox.Text = "00:00"; baselineError.Foreground = Brushes.OrangeRed; baselineError.Text = UiText.T("基准时间已清除。", "Baseline cleared."); changed(); };
         baselineActions.Children.Add(baselineSave); baselineActions.Children.Add(baselineClear); body.Children.Add(baselineActions);
         Label(UiText.T("格式：YYYY-MM-DD 和 HH:mm。输入的是本机时间；保存后转换为绝对 UTC，时区变化不会改写基准点。自定义区间会持续保存采样记录。", "Format: YYYY-MM-DD and HH:mm. Input is local time and is saved as absolute UTC; timezone changes do not move the baseline. Samples continue to be recorded for the custom period."), 10);
-        if (desktopOptions != null) { Page("desktop", "任务与桌面", "Tasks & desktop", "任务结算、迷你显示与桌面行为", "Settlement, mini metrics and desktop behavior"); body.Children.Add(desktopOptions(this)); }
+        if (desktopOptions != null) { Page("desktop", "桌面与收纳", "Desktop & tuck", "贴边、收纳与窗口位置", "Screen edges, tuck and window position"); body.Children.Add(desktopOptions(this, "desktop")); }
         Page("updates", "更新与链接", "Updates & links", "版本更新与使用文档", "Version updates and documentation");
         Section("在线更新", "Online updates");
         var updates = new Button { Content = UiText.T("检查新版本 / 下载更新…", "Check version / download update…"), Padding = new Thickness(10,8,10,8), HorizontalAlignment = HorizontalAlignment.Left };

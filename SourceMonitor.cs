@@ -37,7 +37,18 @@ public sealed class SourceMonitor : IDisposable
         window.Closing += KeepWindow;
     }
 
-    private void KeepWindow(object? sender, CancelEventArgs e) { if (!disposed) { e.Cancel = true; window.Hide(); } }
+    private void SetMemoryTarget(bool low)
+    {
+        if (!ready || disposed || web.CoreWebView2 == null) return;
+        try
+        {
+            web.CoreWebView2.MemoryUsageTargetLevel = low
+                ? CoreWebView2MemoryUsageTargetLevel.Low
+                : CoreWebView2MemoryUsageTargetLevel.Normal;
+        }
+        catch (Exception) { }
+    }
+    private void KeepWindow(object? sender, CancelEventArgs e) { if (!disposed) { e.Cancel = true; window.Hide(); SetMemoryTarget(true); } }
     private static bool IsSource(Uri? uri) => uri?.Scheme == "https" && uri.Host == "copilot.github.microsoft.com";
 
     public async Task InitializeAsync()
@@ -79,6 +90,7 @@ public sealed class SourceMonitor : IDisposable
             window.Opacity = 1;
             window.ShowActivated = true;
             await RefreshAsync();
+            if (!window.IsVisible) SetMemoryTarget(true);
         }
         catch (Exception)
         {
@@ -114,7 +126,7 @@ public sealed class SourceMonitor : IDisposable
             await ExtractAsync();
         }
         catch (Exception) { if (!disposed) Status?.Invoke("network"); }
-        finally { busy = false; }
+        finally { busy = false; if (!window.IsVisible) SetMemoryTarget(true); }
     }
 
     private async Task ReadCurrentAsync()
@@ -124,7 +136,7 @@ public sealed class SourceMonitor : IDisposable
         Status?.Invoke("syncing");
         try { await ExtractAsync(); }
         catch (Exception) { if (!disposed) Status?.Invoke("network"); }
-        finally { busy = false; }
+        finally { busy = false; if (!window.IsVisible) SetMemoryTarget(true); }
     }
 
     private async Task ExtractAsync()
@@ -194,6 +206,7 @@ public sealed class SourceMonitor : IDisposable
         window.ShowActivated = true;
         window.Show();
         window.Activate();
+        SetMemoryTarget(false);
         if (ready && web.Source == null) web.CoreWebView2.Navigate(Target);
     }
 

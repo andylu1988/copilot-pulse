@@ -127,6 +127,7 @@ public partial class MainWindow
         privateWindow.Close(); preferences.HideAmounts = false;
         preferences.DesktopLocked=true; RestoreDesktopInteraction(); Check(!preferences.DesktopLocked && !clickThrough,"Desktop interaction recovery");
         ShowWhatsNew(); await Task.Delay(100); var card=OwnedWindows.Cast<Window>().First(w=>w.Title.Contains("这次改了什么")); CaptureControl(card,Path.Combine(directory,"whats-new-matrix.png")); card.Close();
+        await ReviewDesktopAppearanceAsync(directory, Check);
         File.AppendAllText(Path.Combine(directory,"workspace-checks.txt"),"TOTAL "+checks+" checks\n");
     }
 }

@@ -10,12 +10,28 @@ namespace CopilotPulse;
 internal static partial class DisplayArt
 {
     internal static readonly CultureInfo Us = CultureInfo.GetCultureInfo("en-US");
+    private static readonly Dictionary<(string, byte), SolidColorBrush> brushCache = new();
+    private static readonly Dictionary<(string, bool), Typeface> typefaceCache = new();
     internal static SolidColorBrush Brush(string hex, double alpha = 1)
     {
-        var c = (Color)ColorConverter.ConvertFromString(hex); c.A = (byte)Math.Round(c.A * Math.Clamp(alpha, 0, 1));
-        var brush = new SolidColorBrush(c); brush.Freeze(); return brush;
+        byte a = (byte)Math.Round(Math.Clamp(alpha, 0, 1) * 255);
+        if (brushCache.TryGetValue((hex, a), out var cached)) return cached;
+        if (brushCache.Count >= 512) brushCache.Clear();
+        var c = (Color)ColorConverter.ConvertFromString(hex);
+        c.A = (byte)Math.Round(c.A * (a / 255.0));
+        var brush = new SolidColorBrush(c); brush.Freeze();
+        brushCache[(hex, a)] = brush;
+        return brush;
     }
-    internal static FormattedText Text(string text, double size, string color, double dpi, string font = "Segoe UI", bool bold = false) => new(text, Us, FlowDirection.LeftToRight, new Typeface(new FontFamily(font), FontStyles.Normal, bold ? FontWeights.SemiBold : FontWeights.Normal, FontStretches.Normal), size, Brush(color), dpi);
+    private static Typeface CachedTypeface(string font, bool bold)
+    {
+        if (typefaceCache.TryGetValue((font, bold), out var cached)) return cached;
+        if (typefaceCache.Count >= 64) typefaceCache.Clear();
+        var tf = new Typeface(new FontFamily(font), FontStyles.Normal, bold ? FontWeights.SemiBold : FontWeights.Normal, FontStretches.Normal);
+        typefaceCache[(font, bold)] = tf;
+        return tf;
+    }
+    internal static FormattedText Text(string text, double size, string color, double dpi, string font = "Segoe UI", bool bold = false) => new(text, Us, FlowDirection.LeftToRight, CachedTypeface(font, bold), size, Brush(color), dpi);
     internal static double Radius(SkinPalette p) => Geek(p.Id) || p.Id is "arcade" or "eink" ? 3 : p.Id is "lcd" or "cyber" or "mecha" or "matrix" ? 8 : 17;
     internal static bool Advanced(string id) => id is "radar" or "mecha" or "synthwave" or "warp" or "plasma" or "matrix";
     internal static bool Ambient(string id) => Geek(id) || Advanced(id) || id is "cyber" or "terminal" or "nixie" or "aurora" or "arcade";
@@ -39,13 +55,13 @@ internal static partial class DisplayArt
         string id = p.Id;
         if (id == "lcd")
         {
-            for (double y=r.Top+2;y<r.Bottom;y+=3) dc.DrawLine(new Pen(Brush(p.Text,.045),.6),new Point(r.Left,y),new Point(r.Right,y));
-            dc.DrawLine(new Pen(Brush("#FFFFFF",.38),1),new Point(r.Left+10,r.Top+3),new Point(r.Right-10,r.Top+3));
+            for (double y=r.Top+2;y<r.Bottom;y+=3) dc.DrawLine(Line(p.Text,.045,.6),new Point(r.Left,y),new Point(r.Right,y));
+            dc.DrawLine(Line("#FFFFFF",.38,1),new Point(r.Left+10,r.Top+3),new Point(r.Right-10,r.Top+3));
         }
         if (id is "cyber" or "terminal")
         {
-            for(double y=r.Top;y<r.Bottom;y+=id=="terminal"?3:14) dc.DrawLine(new Pen(Brush(p.Accent,id=="terminal"?.07:.05),.7),new Point(r.Left,y),new Point(r.Right,y));
-            if(id=="cyber") for(double x=r.Left;x<r.Right;x+=22) dc.DrawLine(new Pen(Brush(p.Accent,.035),.6),new Point(x,r.Top),new Point(x,r.Bottom));
+            for(double y=r.Top;y<r.Bottom;y+=id=="terminal"?3:14) dc.DrawLine(Line(p.Accent,id=="terminal"?.07:.05,.7),new Point(r.Left,y),new Point(r.Right,y));
+            if(id=="cyber") for(double x=r.Left;x<r.Right;x+=22) dc.DrawLine(Line(p.Accent,.035,.6),new Point(x,r.Top),new Point(x,r.Bottom));
             double scan = r.Top + (time % 9 / 9) * r.Height;
             var beam = new LinearGradientBrush(new GradientStopCollection { new(Brush(p.Accent,0).Color,0),new(Brush(p.Accent,.09).Color,.5),new(Brush(p.Accent,0).Color,1) },new Point(0,0),new Point(0,1));
             dc.DrawRectangle(beam,null,new Rect(r.Left,scan-6,r.Width,12));
@@ -58,7 +74,7 @@ internal static partial class DisplayArt
                 var glow=new RadialGradientBrush(Brush(i==1?p.Secondary:p.Accent,.22).Color,Colors.Transparent);
                 dc.DrawEllipse(glow,null,new Point(x,y),r.Width*.48,r.Height*.8);
             }
-            dc.DrawLine(new Pen(Brush("#FFFFFF",.20),1),new Point(r.Left+20,r.Top+4),new Point(r.Right-28,r.Top+4));
+            dc.DrawLine(Line("#FFFFFF",.20,1),new Point(r.Left+20,r.Top+4),new Point(r.Right-28,r.Top+4));
         }
         if(id=="arcade")
         {
@@ -73,7 +89,7 @@ internal static partial class DisplayArt
         if(id=="eink")
             for(double y=r.Top+5;y<r.Bottom;y+=12) for(double x=r.Left+5;x<r.Right;x+=12) dc.DrawEllipse(Brush(p.Edge,.10),null,new Point(x,y),.45,.45);
         if(id=="nixie")
-            for(double y=r.Top+4;y<r.Bottom;y+=5) dc.DrawLine(new Pen(Brush(p.Accent,.025),.6),new Point(r.Left,y),new Point(r.Right,y));
+            for(double y=r.Top+4;y<r.Bottom;y+=5) dc.DrawLine(Line(p.Accent,.025,.6),new Point(r.Left,y),new Point(r.Right,y));
         dc.Pop(); dc.Pop();
     }
 
@@ -100,9 +116,9 @@ internal static partial class DisplayArt
         if (Advanced(p.Id) && p.Id != "matrix")
         {
             var shape = label.BuildGeometry(at);
-            dc.DrawGeometry(null, new Pen(Brush(p.Accent, .10 * EffectOpacity), 3), shape);
+            dc.DrawGeometry(null, Line(p.Accent, .10 * EffectOpacity, 3), shape);
         }
-        if(pulse>0 && !p.Light) { var geometry=label.BuildGeometry(at); dc.DrawGeometry(Brush(p.Accent,pulse*.08),new Pen(Brush(p.Accent,pulse*.10),4),geometry); }
+        if(pulse>0 && !p.Light) { var geometry=label.BuildGeometry(at); dc.DrawGeometry(Brush(p.Accent,pulse*.08),Line(p.Accent,pulse*.10,4),geometry); }
         dc.DrawText(label,at);
     }
     private static void CenterText(DrawingContext dc,Rect box,string value,SkinPalette p,double size,double dpi)
@@ -131,7 +147,7 @@ internal static partial class DisplayArt
             dc.PushTransform(new TranslateTransform(x,0));
             if(char.IsDigit(c)) for(int i=0;i<7;i++) dc.DrawGeometry(Brush((SegmentMasks[c-'0']&(1<<i))!=0?p.Text:p.Edge,(SegmentMasks[c-'0']&(1<<i))!=0?1:.24),null,Segments[i]);
             else if(c=='.') dc.DrawRectangle(Brush(p.Text),null,new Rect(1,39,4,4));
-            else if(c==',') { dc.DrawRectangle(Brush(p.Text),null,new Rect(2,38,4,4)); dc.DrawLine(new Pen(Brush(p.Text),2),new Point(5,42),new Point(3,45)); }
+            else if(c==',') { dc.DrawRectangle(Brush(p.Text),null,new Rect(2,38,4,4)); dc.DrawLine(Line(p.Text,1,2),new Point(5,42),new Point(3,45)); }
             else if(c=='$') dc.DrawText(Text("$",20,p.Text,1,"Consolas",true),new Point(0,17));
             dc.Pop(); x+=SegmentWidth(c);
         }
@@ -168,14 +184,14 @@ internal static partial class DisplayArt
             if(char.IsDigit(c))
             {
                 var glass=new LinearGradientBrush(Brush("#FFE0A5",.055).Color,Brush("#150C04",.18).Color,0);
-                dc.DrawRoundedRectangle(glass,new Pen(Brush(p.Accent,.27),.8),new Rect(x,0,24,47),8,8);
-                dc.DrawLine(new Pen(Brush("#FFF0D4",.13),1),new Point(x+4,8),new Point(x+4,35));
+                dc.DrawRoundedRectangle(glass,Line(p.Accent,.27,.8),new Rect(x,0,24,47),8,8);
+                dc.DrawLine(Line("#FFF0D4",.13,1),new Point(x+4,8),new Point(x+4,35));
                 var label=Text(c.ToString(),36,p.Accent,dpi,"Bahnschrift, Segoe UI");
                 var at=new Point(x+(24-label.Width)/2,3);
                 var shape=label.BuildGeometry(at);
                 double glow=(.10+.05*Math.Sin(time*.8)+pulse*.04)*EffectOpacity;
-                dc.DrawGeometry(null,new Pen(Brush(p.Accent,glow),6),shape); dc.DrawGeometry(null,new Pen(Brush(p.Accent,.20),2.5),shape); dc.DrawText(label,at);
-                dc.DrawLine(new Pen(Brush(p.Edge,.8),1),new Point(x+8,47),new Point(x+8,49)); dc.DrawLine(new Pen(Brush(p.Edge,.8),1),new Point(x+16,47),new Point(x+16,49));
+                dc.DrawGeometry(null,Line(p.Accent,glow,6),shape); dc.DrawGeometry(null,Line(p.Accent,.20,2.5),shape); dc.DrawText(label,at);
+                dc.DrawLine(Line(p.Edge,.8,1),new Point(x+8,47),new Point(x+8,49)); dc.DrawLine(Line(p.Edge,.8,1),new Point(x+16,47),new Point(x+16,49));
             }
             else dc.DrawText(Text(c.ToString(),c=='$'?18:28,p.Accent,dpi,"Segoe UI"),new Point(x,c=='$'?14:12));
             x+=W(c);

@@ -29,7 +29,7 @@ internal sealed class AboutWindow : Window
             var grid = new Grid { Margin = new Thickness(0,6,0,6) }; grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
             grid.Children.Add(new TextBlock { Text = label, Opacity = .7 }); value.TextWrapping = TextWrapping.Wrap; Grid.SetColumn(value,1); grid.Children.Add(value); body.Children.Add(grid);
         }
-        Row(UiText.T("当前本地版本", "Local version"), new TextBlock { Text = UpdatePolicy.Current + " · Windows x64" });
+        Row(UiText.T("当前本地版本", "Local version"), new TextBlock { Text = $"{UpdatePolicy.Current} · {PlatformRuntime.RuntimeBadge()}" });
         cloud.Text = UiText.T("等待检查…", "Waiting to check…"); Row(UiText.T("云端最新正式版", "Latest stable version"), cloud);
         checkedAt.Text = "—"; Row(UiText.T("上次检查时间", "Last checked"), checkedAt);
         Row(UiText.T("项目作者", "Author"), new TextBlock { Text = "Andy Lu" });

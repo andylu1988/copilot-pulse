@@ -1,5 +1,8 @@
 #ifndef AppVersion
-  #define AppVersion "1.14.0"
+  #define AppVersion "1.15.0"
+#endif
+#ifndef AppArch
+  #define AppArch "x64"
 #endif
 #ifndef PayloadDir
   #error PayloadDir is required
@@ -30,11 +33,16 @@ DefaultDirName={localappdata}\Programs\CopilotPulse
 DefaultGroupName={#ProductName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+#if AppArch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 MinVersion=10.0.17763
 OutputDir={#OutputPath}
-OutputBaseFilename=CopilotPulse-Setup-{#AppVersion}-x64
+OutputBaseFilename=CopilotPulse-Setup-{#AppVersion}-{#AppArch}
 SetupIconFile={#PayloadDir}\pulse-usage-v4-c.ico
 UninstallDisplayIcon={app}\pulse-usage-v4-c.ico
 WizardStyle=modern
@@ -105,6 +113,16 @@ begin
     Result := 'WebView2 installation did not complete. Connect to the internet, install Microsoft WebView2 Runtime and retry. / WebView2 安装未完成。请联网安装 Microsoft WebView2 Runtime 后重试。'
   else if ExitCode = 3010 then
     NeedsRestart := True;
+end;
+
+procedure DeinitializeUninstall();
+var
+  StartupCommand: String;
+begin
+  // Remove only a startup entry pointing to this installation, never another preview.
+  if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'CopilotPulse', StartupCommand) then
+    if CompareText(StartupCommand, '"' + ExpandConstant('{app}\CopilotPulse.exe') + '" --startup') = 0 then
+      RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'CopilotPulse');
 end;
 
 // Personal history, preferences and authentication profiles are outside {app}.

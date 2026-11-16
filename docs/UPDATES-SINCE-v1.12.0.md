@@ -1,6 +1,6 @@
 # v1.12.0 之后的全部版本变更 / All updates after v1.12.0
 
-核对日期：2026-10-23。v1.12.0 之后已发布 **v1.13.0、v1.13.1、v1.14.0**。以下按版本列出，未虚构中间版本。时间为 Asia/Shanghai。
+核对日期：2026-11-16。v1.12.0 之后已发布 **v1.13.0、v1.13.1、v1.14.0、v1.15.0**。以下按公开发布版本列出（1.14.1 / 1.14.2 为本机迭代验证，已完整并入 v1.15.0 正式版）。时间为 Asia/Shanghai。
 
 ## v1.13.0 · 已发布 / Published · 2026-10-21 22:06
 
@@ -43,7 +43,17 @@
 
 另：主界面快捷按钮改为“月记录 / 热力图”；任务与桌面选项合入设置；去掉预估窗口多余的内部关闭按钮；修正隐藏金额后迷你背景和副指标可读空间，双指标与选择持久化联动。
 
-[完整介绍及最新截图](RELEASE-v1.14.0.md)
+[当时完整说明](RELEASE-v1.14.0.md) · [GitHub release](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.14.0)
+
+## v1.15.0 · 已发布 / Published · 2026-11-16
+
+1. 原生 Windows ARM64 与双架构智能更新：同时提供 `win-x64` 与 `win-arm64` 自包含安装包（启用 `TieredPGO`）；Windows on ARM 上的旧版 x64 仿真客户端可通过在线更新自动切换至原生 ARM64 安装包；关于、更新与诊断窗口展示运行架构与能效档案。
+2. 电源感知渲染与后台低内存采集：冻结画刷/画笔/字体渲染缓存与自适应 `WriteableBitmap` 矩阵缓冲；最小化或工具窗口失焦自动降至 `0 FPS`，电池供电与系统节电模式平滑限帧；后台采样完成后隐藏 WebView2 自动切换低内存目标。
+3. 一键贴边收纳与中央恢复：支持立即靠左/靠右收纳并恢复鼠标交互，保留 24 DIP 裁剪可点击边条，支持拖动保护、32 DIP DPI 缩放吸附及“移回中央，停止自动隐藏”。
+4. 可见增长脉冲与安全预览：延长正向增长徽章停留时间，新增不写入数据、不改金额的“预览用量增长脉冲”。
+5. 桌面显示预设、新鲜度外框与开机自启：内置日常看板、专注计量、安静桌面、屏幕分享四种预设；可选采样新鲜度状态边框；新增当前用户登录 Windows 时启动开关；整理分类设置与三点分组菜单。
+
+[完整介绍及最新截图](RELEASE-v1.15.0.md) · [GitHub release](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.15.0)
 
 ## English version history
 
@@ -51,4 +61,6 @@
 
 **v1.13.1 (published)** unified terminology and themed utilities, fixed inactive task mini states, simplified forecasts to the Overall month-to-date average with configured amount targets, removed task comparison and rate switching, and moved diagnostics into its own main-menu window.
 
-**v1.14.0 (published)** adds delayed task settlement, independent mini dual metrics, templates/measure again, clickable daily heatmap, manual amount privacy, edge tuck/fullscreen hiding, What's new, usage-growth pulse, monthly archive cards, desktop lock/click-through and task timeline markers. It also integrates task/desktop controls into Settings and adds the main heatmap shortcut. Download v1.14.0 or update from the app.
+**v1.14.0 (published)** adds delayed task settlement, independent mini dual metrics, templates/measure again, clickable daily heatmap, manual amount privacy, edge tuck/fullscreen hiding, What's new, usage-growth pulse, monthly archive cards, desktop lock/click-through and task timeline markers. It also integrates task/desktop controls into Settings and adds the main heatmap shortcut. [v1.14.0 release notes](RELEASE-v1.14.0.md).
+
+**v1.15.0 (published)** adds native Windows `arm64` alongside `x64` self-contained installers with `TieredPGO`, automatic x64-to-ARM64 in-app update migration on Windows on ARM, power-aware FPS throttling (`0 FPS` when minimized/unfocused, adaptive battery & Energy Saver caps), frozen render caches, idle WebView2 low-memory target, immediate left/right edge tuck with 24 DIP multi-monitor clipping and center recovery, visible growth pulse with unrecorded preview, four desktop display presets, data freshness border states, and launch at Windows sign-in. Download [v1.15.0](RELEASE-v1.15.0.md) or update from the app.

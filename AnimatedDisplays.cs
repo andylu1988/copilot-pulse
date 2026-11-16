@@ -16,6 +16,8 @@ public abstract class AnimatedDisplay : FrameworkElement
     private double pulseStarted=-10, pulseStrength=1;
     private bool subscribed;
     private string? previewSkin;
+    private Window? hostWindow;
+    internal bool IsUtilityBackdrop { get; set; }
     public bool Preview { get; set; }
     public bool AnimatePreview { get; set; }
     public string? PreviewSkin { get=>previewSkin;set {previewSkin=value; RefreshAppearance();} }
@@ -29,15 +31,62 @@ public abstract class AnimatedDisplay : FrameworkElement
 
     protected AnimatedDisplay()
     {
-        animation.Tick += (_,_) => { if(!ShouldAnimate) animation.Stop(); else InvalidateVisual(); };
-        Loaded += (_,_) => { if(!subscribed) { SystemParameters.StaticPropertyChanged += SystemChanged; subscribed=true; } RefreshAppearance(); };
-        Unloaded += (_,_) => { animation.Stop(); if(subscribed) { SystemParameters.StaticPropertyChanged-=SystemChanged;subscribed=false; } };
+        animation.Tick += (_,_) =>
+        {
+            int fps = EffectiveTargetFps;
+            if(!ShouldAnimate || fps <= 0) { animation.Stop(); return; }
+            double interval = 1000.0 / fps;
+            if(Math.Abs(animation.Interval.TotalMilliseconds - interval) > .05) animation.Interval = TimeSpan.FromMilliseconds(interval);
+            InvalidateVisual();
+        };
+        Loaded += (_,_) =>
+        {
+            AttachHostWindow(Window.GetWindow(this));
+            if(!subscribed) { SystemParameters.StaticPropertyChanged += SystemChanged; subscribed=true; }
+            RefreshAppearance();
+        };
+        Unloaded += (_,_) =>
+        {
+            animation.Stop();
+            AttachHostWindow(null);
+            if(subscribed) { SystemParameters.StaticPropertyChanged-=SystemChanged;subscribed=false; }
+        };
         IsVisibleChanged += (_,_) => RefreshAppearance();
     }
+    private void AttachHostWindow(Window? next)
+    {
+        if (ReferenceEquals(hostWindow, next)) return;
+        if (hostWindow != null)
+        {
+            hostWindow.StateChanged -= HostWindowChanged;
+            hostWindow.Activated -= HostWindowChanged;
+            hostWindow.Deactivated -= HostWindowChanged;
+        }
+        hostWindow = next;
+        if (hostWindow != null)
+        {
+            hostWindow.StateChanged += HostWindowChanged;
+            hostWindow.Activated += HostWindowChanged;
+            hostWindow.Deactivated += HostWindowChanged;
+        }
+    }
+    private void HostWindowChanged(object? sender, EventArgs e) => RefreshAppearance();
+    private int EffectiveTargetFps => PlatformRuntime.EffectiveFps(
+        Preview ? 60 : SkinTheme.Settings.AnimationFps,
+        IsUtilityBackdrop,
+        hostWindow?.IsActive ?? true,
+        hostWindow?.WindowState == WindowState.Minimized);
     private bool ShouldAnimate => IsLoaded && IsVisible && MotionAllowed && (HasAmbient || Pulse>0);
     private void SystemChanged(object? sender,PropertyChangedEventArgs e) { if(e.PropertyName is nameof(SystemParameters.ClientAreaAnimation) or nameof(SystemParameters.HighContrast)) Dispatcher.Invoke(RefreshAppearance); }
     internal double AnimationIntervalMs => animation.Interval.TotalMilliseconds;
-    internal void RefreshAppearance() { animation.Interval = TimeSpan.FromMilliseconds(1000.0 / SkinTheme.Settings.AnimationFps); if(ShouldAnimate)animation.Start();else animation.Stop(); InvalidateVisual(); }
+    internal void RefreshAppearance()
+    {
+        int configuredFps = Preview ? 60 : SkinTheme.Settings.AnimationFps;
+        int fps = EffectiveTargetFps;
+        animation.Interval = TimeSpan.FromMilliseconds(1000.0 / (fps > 0 ? fps : configuredFps));
+        if(ShouldAnimate && fps > 0) animation.Start(); else animation.Stop();
+        InvalidateVisual();
+    }
     protected void Flash(double strength = 1) { pulseStrength=Math.Clamp(strength,.35,1); pulseStarted=clock.Elapsed.TotalSeconds;RefreshAppearance(); }
     internal void PaintReviewFrame(double time) { ReviewTime=time;InvalidateVisual(); }
 }
@@ -66,8 +115,10 @@ public sealed partial class MoneyReadout : AnimatedDisplay
     {
         bool changed=amount!=value, different=MetricCaption!=caption||changed||state!=status||updated!=time||RecordedPeriod!=recordedPeriod||wasHidden!=SkinTheme.Settings.HideAmounts;
         wasHidden=SkinTheme.Settings.HideAmounts;
+        if(changed && amount.HasValue && value > amount && MetricCaption==caption && RecordedPeriod==recordedPeriod && time>updated && updated.HasValue
+            && time.HasValue && HistoryRanges.Period(time.Value)==HistoryRanges.Period(updated.Value)
+            && !SkinTheme.Settings.HideAmounts && SkinTheme.Settings.GrowthPulse && Palette.Id!="eink")Flash(.35 + .65 * Math.Min(1, (double)((value!.Value - amount.Value) / Math.Max(1m, amount.Value * .01m))));
         RecordedPeriod=recordedPeriod; MetricCaption=caption;
-        if(changed && amount.HasValue && value > amount && SkinTheme.Settings.GrowthPulse && Palette.Id!="eink")Flash(.35 + .65 * Math.Min(1, (double)((value!.Value - amount.Value) / Math.Max(1m, amount.Value * .01m))));
         amount=value;state=status;updated=time;
         if(different || UiText.English)
         {
@@ -101,7 +152,7 @@ public sealed partial class MoneyReadout : AnimatedDisplay
         dc.PushTransform(new ScaleTransform(ActualWidth/228,ActualHeight/96));
         var r=new Rect(1,1,226,94);var frame=DisplayArt.Frame(r,p);
         var background=SkinTheme.Backdrop(p,228,96,false);
-        dc.DrawGeometry(background.Background,new Pen(DisplayArt.Brush(p.Edge),1),frame);
+        dc.DrawGeometry(background.Background,DisplayArt.Line(p.Edge,1,1),frame);
         dc.PushClip(frame);dc.DrawGeometry(background.Shade,null,frame);
         DisplayArt.Texture(dc,r,p,Phase,true);
         if(SkinTheme.Settings.HideAmounts)
@@ -122,17 +173,17 @@ public sealed partial class MoneyReadout : AnimatedDisplay
         if(p.Id=="matrix") { DrawMatrixInstrument(dc,p,dpi); dc.Pop();dc.Pop();DrawGrowthScan(dc,p);return; }
         if(p.Id=="lcd")
         {
-            dc.DrawRoundedRectangle(DisplayArt.Brush(p.Chart),new Pen(DisplayArt.Brush(p.Edge,.9),1),new Rect(10,24,208,53),4,4);
+            dc.DrawRoundedRectangle(DisplayArt.Brush(p.Chart),DisplayArt.Line(p.Edge,.9,1),new Rect(10,24,208,53),4,4);
             foreach(var pt in new[]{new Point(6,6),new Point(222,6),new Point(6,90),new Point(222,90)})dc.DrawEllipse(DisplayArt.Brush(p.Text,.3),null,pt,1.6,1.6);
         }
         if(p.Id=="cyber")
         {
             dc.PushOpacity(DisplayArt.EffectOpacity);
-            dc.DrawLine(new Pen(DisplayArt.Brush(p.Accent,.45),2),new Point(12,2),new Point(79,2));
-            dc.DrawLine(new Pen(DisplayArt.Brush(p.Secondary,.8),2),new Point(153,94),new Point(214,94));
+            dc.DrawLine(DisplayArt.Line(p.Accent,.45,2),new Point(12,2),new Point(79,2));
+            dc.DrawLine(DisplayArt.Line(p.Secondary,.8,2),new Point(153,94),new Point(214,94));
             double travel=14+(Phase%6)/6*180;
-            dc.DrawLine(new Pen(DisplayArt.Brush(p.Accent,.7),2),new Point(travel,2),new Point(travel+19,2));
-            dc.DrawLine(new Pen(DisplayArt.Brush(p.Secondary,.55),1),new Point(9,69),new Point(17,77));
+            dc.DrawLine(DisplayArt.Line(p.Accent,.7,2),new Point(travel,2),new Point(travel+19,2));
+            dc.DrawLine(DisplayArt.Line(p.Secondary,.55,1),new Point(9,69),new Point(17,77));
             dc.Pop();
         }
         if(p.Id=="arcade")
@@ -140,7 +191,7 @@ public sealed partial class MoneyReadout : AnimatedDisplay
             dc.DrawRectangle(DisplayArt.Brush(p.Secondary),null,new Rect(5,5,22,2));
             dc.DrawRectangle(DisplayArt.Brush(p.Accent),null,new Rect(29,5,10,2));
         }
-        if(Pulse>0)dc.DrawGeometry(null,new Pen(DisplayArt.Brush(p.Accent,Pulse*.35*DisplayArt.EffectOpacity),2),frame);
+        if(Pulse>0)dc.DrawGeometry(null,DisplayArt.Line(p.Accent,Pulse*.35*DisplayArt.EffectOpacity,2),frame);
         string title=Preview?"PREVIEW / USD":p.Id=="terminal"?"COPILOT // USD":p.Id=="lcd"?"MONTH  ·  USD":"COPILOT  /  MTD USD";
         if(RecordedPeriod) title="COPILOT / SESSION USD";
         if(!string.IsNullOrEmpty(MetricCaption)) title=MetricCaption+" / USD";

@@ -10,7 +10,18 @@ internal static partial class DisplayArt
     // Deterministic decorative motion: no randomness or transformations of financial values.
     private static double Cycle(double value) => value - Math.Floor(value);
     private static Point Polar(Point center, double radius, double angle) => new(center.X + Math.Cos(angle) * radius, center.Y + Math.Sin(angle) * radius);
-    private static Pen Line(string color, double opacity, double width = 1) => new(Brush(color, opacity), width);
+    private static readonly System.Collections.Generic.Dictionary<(string, byte, int), Pen> penCache = new();
+    internal static Pen Line(string color, double opacity, double width = 1)
+    {
+        byte a = (byte)Math.Round(Math.Clamp(opacity, 0, 1) * 255);
+        int w = (int)Math.Round(width * 20);
+        if (penCache.TryGetValue((color, a, w), out var cached)) return cached;
+        if (penCache.Count >= 512) penCache.Clear();
+        var pen = new Pen(Brush(color, a / 255.0), width);
+        pen.Freeze();
+        penCache[(color, a, w)] = pen;
+        return pen;
+    }
     private static void Arc(DrawingContext dc, Point center, double radius, double start, double length, Pen pen)
     {
         var shape = new StreamGeometry();
@@ -234,18 +245,21 @@ internal static partial class DisplayArt
     {
         var pixels = new byte[14 * 18 * 4]; sprite.CopyPixels(pixels, 14 * 4, 0); return pixels;
     }).ToArray()).ToArray());
-    private static readonly System.Collections.Generic.Dictionary<(int, int), byte[]> rainBuffers = new();
+    private static readonly System.Collections.Generic.Dictionary<(int, int), (byte[] Buffer, System.Windows.Media.Imaging.WriteableBitmap Bitmap)> rainSurfaces = new();
     private static void Matrix(DrawingContext dc, Rect r, SkinPalette p, double time, bool small)
     {
         // Composite the rain into one bitmap. Hundreds of separate opacity
         // groups otherwise create an expensive WPF composition graph, especially
         // when layered windows are opened or closed.
-        int width = Math.Max(1, (int)Math.Ceiling(r.Width)), height = Math.Max(1, (int)Math.Ceiling(r.Height));
-        if (!rainBuffers.TryGetValue((width, height), out var canvas))
+        double scale = PlatformRuntime.MatrixScale(r.Width, r.Height, small);
+        int width = Math.Max(1, (int)Math.Ceiling(r.Width * scale)), height = Math.Max(1, (int)Math.Ceiling(r.Height * scale));
+        if (!rainSurfaces.TryGetValue((width, height), out var surface))
         {
-            if (rainBuffers.Count >= 8) rainBuffers.Clear();
-            rainBuffers[(width, height)] = canvas = new byte[width * height * 4];
+            if (rainSurfaces.Count >= 8) rainSurfaces.Clear();
+            surface = (new byte[width * height * 4], new System.Windows.Media.Imaging.WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null));
+            rainSurfaces[(width, height)] = surface;
         }
+        var canvas = surface.Buffer;
         Array.Clear(canvas);
         int columns = small ? 28 : 42;
         int trail = small ? 16 : 20;
@@ -267,7 +281,7 @@ internal static partial class DisplayArt
                 int palette = (col % 3 == 0 ? 0 : 2) + (row == 0 ? 0 : 1);
                 double opacity = row == 0 ? (col % 3 == 0 ? .94 : .70) : Math.Pow(1 - row / (double)trail, 1.25) * (col % 3 == 0 ? .76 : .54);
                 var glyph = RainPixels.Value[palette][hash % (uint)RainGlyphs.Value.Length];
-                int left = (int)Math.Round(x - r.Left), top = (int)Math.Round(y - r.Top);
+                int left = (int)Math.Round((x - r.Left) * scale), top = (int)Math.Round((y - r.Top) * scale);
                 for (int gy = 0; gy < 9; gy++) for (int gx = 0; gx < 7; gx++)
                 {
                     int px = left + gx, py = top + gy;
@@ -284,8 +298,8 @@ internal static partial class DisplayArt
                 }
             }
         }
-        var frame = System.Windows.Media.Imaging.BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, canvas, width * 4);
-        frame.Freeze(); dc.DrawImage(frame, r);
+        surface.Bitmap.WritePixels(new Int32Rect(0, 0, width, height), canvas, width * 4, 0);
+        dc.DrawImage(surface.Bitmap, r);
         GlowLine(dc, new Point(r.Left + 12, r.Bottom - 3), new Point(r.Left + 65, r.Bottom - 3), p.Accent, .7);
     }
 

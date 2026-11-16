@@ -13,7 +13,7 @@ public sealed partial class MoneyReadout
         dc.DrawRoundedRectangle(DisplayArt.Brush(p.Bottom, .36), null, new Rect(10, 23, 208, 51), 7, 7);
         Label(string.IsNullOrEmpty(MetricCaption) ? "COPILOT" : MetricCaption, 7.2, p.Muted, 16, 13);
         Label("USD", 6.4, p.Faint, 195, 13);
-        dc.DrawLine(new Pen(DisplayArt.Brush(p.Accent, .28), .6), new Point(16, 26), new Point(212, 26));
+        dc.DrawLine(DisplayArt.Line(p.Accent, .28, .6), new Point(16, 26), new Point(212, 26));
         DisplayArt.Money(dc, new Rect(17, 31, 194, 38), amount, p, Phase, Pulse, dpi);
         bool example = Preview || state == "demo";
         string footer = example ? "示例预览" : StateLabel();

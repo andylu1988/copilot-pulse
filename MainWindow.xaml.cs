@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -64,15 +64,18 @@ public partial class MainWindow : Window
             tray?.Dispose();
             trayIcon?.Dispose();
         };
-        LocationChanged += (_, _) => { if (IsLoaded && !automaticMove && !tucked && !App.Demo && !App.Smoke) { preferences.Left = Left; preferences.Top = Top; } };
+        LocationChanged += (_, _) => DesktopLocationChanged();
     }
 
     private async void LoadedAsync(object sender, RoutedEventArgs e)
     {
+        App.TraceStartup("window loaded");
         PlaceOnScreen();
         InitializeHistory();
+        App.TraceStartup("history initialized");
         InitializeOperations();
         InitializeWorkspace();
+        App.TraceStartup("workspace initialized");
         if(App.MiniAtStartup || App.StartSkin != null) SavePreferences();
         if (App.Demo)
         {
@@ -264,7 +267,10 @@ public partial class MainWindow : Window
     private void OpenSource(object sender, RoutedEventArgs e) { if (!App.Demo) monitor?.ShowLogin(); }
     private void DragHeader(object sender, MouseButtonEventArgs e)
     {
-        if (!preferences.DesktopLocked && WindowDrag.TryMove(this, e)) { SnapDesktop(); SavePreferences(); }
+        if (preferences.DesktopLocked || e.Handled || e.LeftButton != MouseButtonState.Pressed || !WindowDrag.CanDrag(e.OriginalSource as DependencyObject)) return;
+        BeginDesktopDrag();
+        try { WindowDrag.TryMove(this, e); }
+        finally { EndDesktopDrag(); }
     }
     private void TogglePin(object sender, RoutedEventArgs e) { Topmost = !Topmost; preferences.Topmost = Topmost; PinButton.Foreground = Brush(Topmost ? "#83D6EC" : "#7186A6"); SavePreferences(); }
     private void HideToTray(object sender, RoutedEventArgs e) { if (tray == null) Close(); else Hide(); }
@@ -273,39 +279,45 @@ public partial class MainWindow : Window
     private ContextMenu BuildSettingsMenu()
     {
         var menu = new ContextMenu();
+        MenuItem Group(string zh, string en) { var item = new MenuItem { Header = UiText.T(zh, en) }; menu.Items.Add(item); return item; }
+        MenuItem ActionItem(ItemCollection items, string zh, string en, Action action)
+        { var item = new MenuItem { Header = UiText.T(zh, en) }; item.Click += (_, _) => action(); items.Add(item); return item; }
+        ActionItem(menu.Items, "设置…", "Settings…", OpenPreferences);
+        var display = Group("显示与隐私", "Display & privacy");
+        display.Items.Add(BuildDisplayModeMenu());
         var metrics = new MenuItem { Header = UiText.T("迷你显示指标", "Mini metrics") };
         foreach (var item in MiniMetricItems(false)) metrics.Items.Add(item);
-        menu.Items.Add(metrics);
-        var activity = new MenuItem { Header = UiText.T("月记录 / 热力图…", "Months / Heatmap…") }; activity.Click += OpenMonthlyActivity; menu.Items.Add(activity);
-        var privacy = new MenuItem { Header = UiText.T("隐藏金额", "Hide amounts"), IsCheckable = true, IsChecked = preferences.HideAmounts }; privacy.Click += (_, _) => ToggleAmountPrivacy(); menu.Items.Add(privacy);
-        var marker = new MenuItem { Header = UiText.T("添加阶段标记…", "Add stage marker…"), IsEnabled = HasActiveMeasurement }; marker.Click += (_, _) => AddTaskMarker(); menu.Items.Add(marker);
-        var settings = new MenuItem { Header = "设置…" }; settings.Click += (_, _) => OpenPreferences(); menu.Items.Add(settings);
-        var taskHistory = new MenuItem { Header = UiText.T("任务计量 / 导出…", "Task measurements / Export…") }; taskHistory.Click += OpenTasks; menu.Items.Add(taskHistory);
-        var updates = new MenuItem { Header = UiText.T("检查更新…", "Check for updates…") }; updates.Click += (_, _) => OpenUpdates(); menu.Items.Add(updates);
-        var about = new MenuItem { Header = UiText.T("关于…", "About…") }; about.Click += (_, _) => OpenAbout(); menu.Items.Add(about);
-        var insights = new MenuItem { Header = UiText.T("用量预估…", "Usage forecast…") }; insights.Click += (_, _) => OpenInsights(); menu.Items.Add(insights);
-        var diagnostic = new MenuItem { Header = UiText.T("连接诊断向导…", "Connection diagnostics…") }; diagnostic.Click += (_, _) => OpenInsights(2); menu.Items.Add(diagnostic);
-        menu.Items.Add(BuildDisplayModeMenu());
-        menu.Items.Add(BuildSkinMenu());
-        var motion = new MenuItem { Header = "减少动态效果", IsCheckable = true, IsChecked = preferences.ReduceMotion };
-        motion.Click += (_,_) => { preferences.ReduceMotion=motion.IsChecked; SkinEdited(); skinWindow?.RefreshSelection(); }; menu.Items.Add(motion);
-        var pin = new MenuItem { Header = "始终置顶", IsCheckable = true, IsChecked = Topmost }; pin.Click += TogglePin; menu.Items.Add(pin);
-        var refresh = new MenuItem { Header = "自动刷新间隔" };
-        foreach (int seconds in SettingsPolicy.RefreshOptions)
-        {
-            var item = new MenuItem { Header = seconds == 300 ? "5 分钟" : $"{seconds} 秒", IsCheckable = true, IsChecked = preferences.RefreshSeconds == seconds };
-            item.Click += (_, _) => { preferences.RefreshSeconds = seconds; nextRefresh = DateTimeOffset.Now.AddSeconds(seconds); if (status == "live") SetStatus("live"); SavePreferences(); };
-            refresh.Items.Add(item);
-        }
-        menu.Items.Add(refresh);
-        var pause = new MenuItem { Header = "暂停自动刷新", IsCheckable = true, IsChecked = paused };
-        pause.Click += (_, _) => ToggleSampling();
-        menu.Items.Add(pause);
-        var historyItem = new MenuItem { Header = "用量历史" }; historyItem.Click += OpenHistory; menu.Items.Add(historyItem);
+        display.Items.Add(metrics); display.Items.Add(BuildSkinMenu());
+        var privacy = ActionItem(display.Items, "隐藏金额", "Hide amounts", ToggleAmountPrivacy); privacy.IsCheckable = true; privacy.IsChecked = preferences.HideAmounts;
+        var motion = new MenuItem { Header = UiText.T("减少动态效果", "Reduce motion"), IsCheckable = true, IsChecked = preferences.ReduceMotion };
+        motion.Click += (_, _) => { preferences.ReduceMotion = motion.IsChecked; SkinEdited(); skinWindow?.RefreshSelection(); };
+        display.Items.Add(motion);
+        var pin = new MenuItem { Header = UiText.T("始终置顶", "Always on top"), IsCheckable = true, IsChecked = Topmost }; pin.Click += TogglePin; display.Items.Add(pin);
+        var desktop = Group("桌面与收纳", "Desktop & tuck");
+        ActionItem(desktop.Items, "靠左并收纳", "Tuck left", () => TuckDesktopNow(false));
+        ActionItem(desktop.Items, "靠右并收纳", "Tuck right", () => TuckDesktopNow(true));
+        ActionItem(desktop.Items, "移回中央，停止自动隐藏", "Center and stop automatic hiding", CenterDesktop);
+        desktop.Items.Add(new Separator());
+        var auto = ActionItem(desktop.Items, "贴边后自动收纳", "Automatically tuck at an edge", () => { preferences.EdgeTuck = !preferences.EdgeTuck; if (preferences.EdgeTuck) preferences.EdgeSnap = true; else RevealTucked(); SavePreferences(); });
+        auto.IsCheckable = true; auto.IsChecked = preferences.EdgeTuck;
+        ActionItem(desktop.Items, "桌面与收纳设置…", "Desktop & tuck settings…", OpenWorkspace);
+        var tasks = Group("任务计量", "Task measurement");
+        ActionItem(tasks.Items, "计量记录 / 导出…", "Measurements / Export…", () => OpenTasks(this, new RoutedEventArgs()));
+        ActionItem(tasks.Items, "添加阶段标记…", "Add stage marker…", AddTaskMarker).IsEnabled = HasActiveMeasurement;
+        ActionItem(tasks.Items, "立即结束任务", "Finish task now", FinishTaskImmediately).IsEnabled = HasActiveMeasurement;
+        var usage = Group("用量记录与预估", "Usage history & forecast");
+        ActionItem(usage.Items, "历史趋势…", "Usage history…", () => OpenHistory(this, new RoutedEventArgs()));
+        ActionItem(usage.Items, "月记录 / 热力图…", "Months / Heatmap…", () => OpenMonthlyActivity(this, new RoutedEventArgs()));
+        ActionItem(usage.Items, "用量预估…", "Usage forecast…", () => OpenInsights());
+        var source = Group("数据与连接", "Data & connection");
+        var pause = ActionItem(source.Items, "暂停自动刷新", "Pause automatic refresh", ToggleSampling); pause.IsCheckable = true; pause.IsChecked = paused;
+        ActionItem(source.Items, "Windows 账户登录 / 数据源", "Windows sign-in / Data source", () => OpenSource(this, new RoutedEventArgs()));
+        ActionItem(source.Items, "在系统浏览器打开页面", "Open in system browser", OpenSystemBrowser);
+        ActionItem(menu.Items, "连接诊断向导…", "Connection diagnostics…", () => OpenInsights(2));
         menu.Items.Add(new Separator());
-        var open = new MenuItem { Header = "Windows 账户登录 / 数据源" }; open.Click += OpenSource; menu.Items.Add(open);
-        var browser = new MenuItem { Header = "在系统浏览器打开页面" }; browser.Click += (_, _) => OpenSystemBrowser(); menu.Items.Add(browser);
-        var exit = new MenuItem { Header = "退出 Copilot Pulse" }; exit.Click += (_, _) => Close(); menu.Items.Add(exit);
+        ActionItem(menu.Items, "检查更新…", "Check for updates…", OpenUpdates);
+        ActionItem(menu.Items, "关于…", "About…", OpenAbout);
+        ActionItem(menu.Items, "退出 Copilot Pulse", "Exit Copilot Pulse", Close);
         UiText.Apply(menu);
         return menu;
     }

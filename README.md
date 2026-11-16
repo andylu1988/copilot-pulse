@@ -4,16 +4,28 @@
 
 Windows 桌面小组件，读取 Microsoft 内部 Copilot Consumption 页面，显示 Overall 月度累计、历史趋势和任务期间的观测增量。支持紧凑 / 完整 / 迷你模式、22 套皮肤、中英文界面、阈值提醒与本机持久化记录。
 
-**当前正式版：v1.14.0 · 2026-10-23 · Windows x64**
+**当前正式版：v1.15.0 · 2026-11-16 · Windows x64 / ARM64**
 
-[正式版下载](https://github.com/andylu1988/copilot-pulse/releases/latest) · [最新版介绍](docs/RELEASE-v1.14.0.md) · [1.12.0 之后全部更新](docs/UPDATES-SINCE-v1.12.0.md) · [中文指南](docs/USER-GUIDE.zh-CN.md) · [English guide](docs/USER-GUIDE.en.md) · [English](#v1140-task-observations-and-desktop-controls)
+[正式版下载](https://github.com/andylu1988/copilot-pulse/releases/latest) · [最新版介绍](docs/RELEASE-v1.15.0.md) · [1.12.0 之后全部更新](docs/UPDATES-SINCE-v1.12.0.md) · [中文指南](docs/USER-GUIDE.zh-CN.md) · [English guide](docs/USER-GUIDE.en.md) · [English](#v1150-highlights-native-windows-arm64-power-efficiency-and-desktop-tuck)
 
 > 下方均为当前实际应用渲染的 Matrix 皮肤截图，使用隔离的虚构账户、金额、任务和日期。静态截图是动画的一帧；正式菜单没有只读演示入口。 / Screenshots use the actual app, Matrix skin and isolated fictional data.
 
 
-## v1.14.0：任务观察与桌面体验
+## v1.15.0 新特性：原生 ARM64、能效优化与桌面收纳
 
-**v1.14.0 已发布。** 可从 GitHub 下载 Windows x64 安装包，或在客户端选择“在线更新”完成下载、校验、安装和自动重启。以下截图使用矩阵皮肤与隔离的虚构数据。
+**v1.15.0 已发布。** 同时提供 Windows `x64` 与原生 `ARM64` 安装包，客户端“在线更新”会自动按系统架构下载、SHA256 校验、静默安装并重启（Windows on ARM 上的旧版 x64 仿真客户端会自动升级切换至原生 ARM64 版）。详见 [v1.15.0 完整发布说明](docs/RELEASE-v1.15.0.md)。
+
+- **原生 ARM64 与电源感知能效**：启用 .NET 8 `TieredPGO`、冻结渲染对象缓存与自适应矩阵像素缓冲；最小化或子窗口失焦自动停表（`0 FPS`），电池供电与节电模式自动平滑限帧；后台采样完成后隐藏 WebView2 自动切换低内存目标。
+- **一键贴边收纳与中央恢复**：菜单直接执行「靠左并收纳 / 靠右并收纳」，保留 **24 DIP** 可命中裁剪边条（鼠标移入或点击展开），支持拖动期间防误收、**32 DIP** DPI 感知吸附与一键「移回中央，停止自动隐藏」。
+- **可见增长脉冲、桌面预设、新鲜度外框与开机自启**：延长用量增长提示停留时间并提供不计入用量的安全预览；新增「日常看板 / 专注计量 / 安静桌面 / 屏幕分享」预设、采样状态新鲜度外框与「登录 Windows 时启动 Copilot Pulse」开关。
+
+![外观设置与桌面显示预设](docs/screenshots/v1.15.0/appearance-settings-matrix.png)
+
+![在线更新：x64 / ARM64 自动匹配](docs/screenshots/v1.15.0/update-arm64-runtime-matrix.png)
+
+## 任务观察与核心功能导览
+
+以下功能自 v1.14.0 起提供并在 v1.15.0 中持续增强；截图使用矩阵皮肤与隔离的虚构数据。
 
 ![紧凑主面板：矩阵皮肤与虚构数据](docs/screenshots/v1.14.0/release-compact-zh-CN.png)
 
@@ -89,10 +101,10 @@ Windows 桌面小组件，读取 Microsoft 内部 Copilot Consumption 页面，�
 
 ## 安装、登录与数据 / Installation, sign-in and data
 
-1. 当前正式版为 [v1.14.0](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.14.0)，Windows 10 1809+ / Windows 11 x64，需 WebView2。
+1. 当前正式版为 [v1.15.0](https://github.com/andylu1988/copilot-pulse/releases/tag/v1.15.0)，支持 Windows 10 1809+ / Windows 11（提供 `x64` 与原生 `ARM64` 安装包），需 WebView2。
 2. 启动后点击 **连接 Microsoft 账户**，使用自己的、有源站权限的公司账户完成官方登录，等待首个成功同步。
 3. WebView2 尝试 Windows 公司账户 SSO，不保证复用浏览器会话或 PRT。安装包不含作者账号、会话或密钥。
-4. 正式版支持每小时检查、48 小时提醒期及下载校验后安装并重启客户端；Windows 无需重启。v1.14.0 正式版已启用在线更新。
+4. 正式版支持每小时检查、按系统架构（`x64` / `ARM64`）匹配下载校验、48 小时提醒期及静默安装重启客户端；Windows 无需重启。v1.15.0 正式版已启用双架构在线更新。
 
 ![首次连接步骤](docs/screenshots/onboarding.png)
 
@@ -102,12 +114,19 @@ Windows 桌面小组件，读取 Microsoft 内部 Copilot Consumption 页面，�
 
 这是个人开发的非官方辅助工具，金额为源页面 INTERNAL USD，请以源站为准。本地文件未额外加密；匿名任务导出仍含时间、金额和任务 ID，分享前应检查。诊断报告排除账户、金额、凭据、Cookie 和网页正文。
 
-Install the stable x64 release, connect your own authorized corporate account, and wait for synchronization. WebView2 attempts Windows-account SSO; browser-session/PRT reuse is not guaranteed. No author credentials are included. Stable clients support hourly update checks and download / checksum / install / app restart; unopened notices trigger unattended installation after 48 hours. v1.14.0 supports in-app updates. Local unencrypted history, task and sampling files survive upgrades/uninstall; missing data cannot be backfilled. Anonymous task exports still contain timestamps, amounts and IDs. This is an unofficial observation tool; source readings remain authoritative.
+Install the stable `x64` or native `ARM64` release, connect your own authorized corporate account, and wait for synchronization. WebView2 attempts Windows-account SSO; browser-session/PRT reuse is not guaranteed. No author credentials are included. Stable clients support hourly architecture-aware update checks and download / SHA256 checksum / install / app restart; unopened notices trigger unattended installation after 48 hours. v1.15.0 supports dual-architecture in-app updates. Local unencrypted history, task and sampling files survive upgrades/uninstall; missing data cannot be backfilled. Anonymous task exports still contain timestamps, amounts and IDs. This is an unofficial observation tool; source readings remain authoritative.
 
 
-## v1.14.0: task observations and desktop controls
+## v1.15.0 highlights: native Windows ARM64, power efficiency and desktop tuck
 
-**v1.14.0 is available.** Download the Windows x64 installer from GitHub or use Updates in the app to download, verify, install and restart automatically. Screenshots use the Matrix skin with isolated fictional data.
+**v1.15.0 is available.** Native Windows `x64` and `ARM64` self-contained installers are published on GitHub, and in-app **Online updates** automatically select, SHA256-verify, install and restart the matching architecture package (migrating emulated x64 installs on Windows on ARM to native ARM64). See the [full v1.15.0 release notes](docs/RELEASE-v1.15.0.md).
+
+- **Native ARM64 & power-aware rendering**: `TieredPGO` builds, frozen render caches, `0 FPS` idle/minimized throttling, smooth battery / Energy Saver frame caps, and low-memory idle WebView2 targets.
+- **Immediate edge tuck & presets**: One-click left/right tuck with a clipped, hit-testable **24 DIP** strip, drag protection, **32 DIP** DPI-aware snap, center recovery, visible growth-pulse preview, four desktop display presets, data-freshness border colors, and launch at Windows sign-in.
+
+## Core task observations and desktop controls
+
+Screenshots below use the Matrix skin with isolated fictional data.
 
 ![Compact Matrix panel with fictional data](docs/screenshots/v1.14.0/release-compact-en.png)
 
@@ -159,4 +178,4 @@ History supports local Today, rolling ranges and UTC quota months, hover, pinnin
 
 ## Build
 
-Windows + .NET 8 SDK: `dotnet publish CopilotPulse.csproj -c Release -r win-x64 --self-contained true`. See the repository packaging scripts for the installer. Do not distribute local profiles, account sessions, personal history or credentials.
+Windows + .NET 8 SDK: `dotnet publish CopilotPulse.csproj -c Release -r win-x64 --self-contained true` (or `-r win-arm64`). See the repository packaging scripts for the installer. Do not distribute local profiles, account sessions, personal history or credentials.

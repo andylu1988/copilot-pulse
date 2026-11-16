@@ -1,5 +1,12 @@
 # 变更记录 / Changelog
 
+## v1.15.0 · 2026-11-16
+
+原生 Windows ARM64 / x64 双架构安装包与在线更新自动切换原生 ARM64；`TieredPGO`、冻结渲染缓存、电源感知自适应帧率（最小化/失焦 `0 FPS`、电池与节电限帧）与后台 WebView2 低内存模式；一键左右贴边收纳（24 DIP 可交互裁剪边条、拖动保护、32 DIP 吸附、一键回中恢复）、可见用量增长脉冲与非计费预览、四种桌面显示预设、数据新鲜度状态外框、开机自启与分类设置整理。[完整介绍与截图](docs/RELEASE-v1.15.0.md) · [1.12.0 后全部更新](docs/UPDATES-SINCE-v1.12.0.md)。
+
+Native `win-arm64` and `win-x64` installers with automatic emulated-x64 to native-ARM64 in-app upgrades, `TieredPGO`, frozen render caches, power-aware FPS pacing, idle WebView2 low-memory target, immediate edge tuck & center recovery, visible growth pulse preview, desktop display presets, data freshness frame, and launch at Windows sign-in. [Full release notes](docs/RELEASE-v1.15.0.md).
+
+
 ## v1.14.0 · 2026-10-23
 
 延迟结算、迷你独立双指标、任务模板与阶段标记、每日热力图、月度归档、金额保护、桌面收纳与锁定、增长脉冲、更新说明卡。[详细内容及 1.12.0 后完整回顾](docs/UPDATES-SINCE-v1.12.0.md)。正式版支持在线更新至 v1.14.0。任务记录保存增加短暂文件占用重试，最终失败保留旧记录。

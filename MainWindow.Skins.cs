@@ -24,6 +24,17 @@ public partial class MainWindow
     {
         ContentStack.Margin = SkinTheme.Current.Id == "matrix" ? new Thickness(28,22,28,22) : new Thickness(23,19,23,18);
         SkinTheme.ApplySurface(Surface, PhotoShade, false);
+        FullBackdrop.CornerRadius = PhotoShade.CornerRadius;
+        UpdateAtmosphereClip();
+        RefreshOutlineGeometry();
+    }
+
+    private void AtmosphereSizeChanged(object sender, SizeChangedEventArgs e) => UpdateAtmosphereClip();
+    private void UpdateAtmosphereClip()
+    {
+        FullAtmosphere.Clip = new System.Windows.Media.RectangleGeometry(
+            new Rect(0, 0, Math.Max(0, FullAtmosphere.ActualWidth), Math.Max(0, FullAtmosphere.ActualHeight)),
+            PhotoShade.CornerRadius.TopLeft, PhotoShade.CornerRadius.TopLeft);
     }
 
     private void SkinEdited()

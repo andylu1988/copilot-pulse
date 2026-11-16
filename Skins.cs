@@ -97,9 +97,22 @@ internal static class SkinTheme
         resources["SkinFont"] = new FontFamily(DisplayArt.Geek(Current.Id) ? "Cascadia Mono, Consolas, Microsoft YaHei UI" : "Segoe UI, Microsoft YaHei UI");
     }
 
-    internal static SolidColorBrush Solid(string color) { var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)); brush.Freeze(); return brush; }
+    private static readonly Dictionary<string, SolidColorBrush> solidCache = new();
+    private static readonly Dictionary<(string, string), SolidColorBrush> resolveCache = new();
+    internal static SolidColorBrush Solid(string color)
+    {
+        if (solidCache.TryGetValue(color, out var cached)) return cached;
+        if (solidCache.Count >= 256) solidCache.Clear();
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color));
+        brush.Freeze();
+        solidCache[color] = brush;
+        return brush;
+    }
     internal static SolidColorBrush Resolve(string value)
     {
+        var key = (Current.Id, value);
+        if (resolveCache.TryGetValue(key, out var cached)) return cached;
+        if (resolveCache.Count >= 512) resolveCache.Clear();
         var original = (Color)ColorConverter.ConvertFromString(value);
         string hex = $"#{original.R:X2}{original.G:X2}{original.B:X2}";
         string mapped = hex switch {
@@ -123,7 +136,9 @@ internal static class SkinTheme
         };
         var c = (Color)ColorConverter.ConvertFromString(mapped);
         c.A = original.A;
-        var result = new SolidColorBrush(c); result.Freeze(); return result;
+        var result = new SolidColorBrush(c); result.Freeze();
+        resolveCache[key] = result;
+        return result;
     }
 
     internal static Brush Preview(SkinPalette skin)

@@ -1,12 +1,14 @@
 param(
     [Parameter(Mandatory)][string]$CompilerPath,
     [Parameter(Mandatory)][string]$WebViewBootstrapper,
+    [ValidateSet('win-x64','win-arm64')][string]$Runtime = 'win-x64',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\..\CopilotPulse-Installer'),
     [string]$BuildDirectory = (Join-Path $PSScriptRoot '..\..\..\work\installer-build'),
     [string]$PackageCache,
     [switch]$TestPackage
 )
 $ErrorActionPreference = 'Stop'
+$arch = if ($Runtime -eq 'win-arm64') { 'arm64' } else { 'x64' }
 $compiler = (Resolve-Path -LiteralPath $CompilerPath).Path
 $bootstrapper = (Resolve-Path -LiteralPath $WebViewBootstrapper).Path
 if ([IO.Path]::GetFileName($bootstrapper) -ne 'MicrosoftEdgeWebview2Setup.exe') {
@@ -23,7 +25,7 @@ $output = [IO.Path]::GetFullPath($OutputDirectory)
 # Every build gets a fresh payload; never package files from an installed/user-data directory.
 $payload = Join-Path $build ('payload-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $payload,$output | Out-Null
-$arguments = @('publish',(Join-Path $PSScriptRoot '..\CopilotPulse.csproj'),'-c','Release','-r','win-x64','--self-contained','true','-o',$payload,'-p:NuGetAudit=false','-p:DebugType=None','-p:DebugSymbols=false')
+$arguments = @('publish',(Join-Path $PSScriptRoot '..\CopilotPulse.csproj'),'-c','Release','-r',$Runtime,'--self-contained','true','-o',$payload,'-p:NuGetAudit=false','-p:DebugType=None','-p:DebugSymbols=false')
 if ($PackageCache) { $arguments += '-p:RestorePackagesPath=' + [IO.Path]::GetFullPath($PackageCache) }
 & dotnet @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
@@ -34,7 +36,7 @@ $forbidden = Get-ChildItem -LiteralPath $payload -Recurse -File | Where-Object {
     $_.FullName -match '[\\/](history|WebView2|migration-backups)[\\/]'
 }
 if ($forbidden) { throw 'User data found in payload; packaging stopped.' }
-$compileArgs = @('/Qp', ('/DAppVersion=' + $version), ('/DPayloadDir=' + $payload), ('/DOutputPath=' + $output), ('/DBootstrapper=' + $bootstrapper))
+$compileArgs = @('/Qp', ('/DAppVersion=' + $version), ('/DAppArch=' + $arch), ('/DPayloadDir=' + $payload), ('/DOutputPath=' + $output), ('/DBootstrapper=' + $bootstrapper))
 if ($TestPackage) {
     $compileArgs += '/DPackageId=CopilotPulse.Installer.Validation'
     $compileArgs += '/DProductName=Copilot Pulse Installer Test'
@@ -42,7 +44,7 @@ if ($TestPackage) {
 }
 & $compiler @compileArgs (Join-Path $PSScriptRoot 'CopilotPulse.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
-$setup = Join-Path $output ('CopilotPulse-Setup-' + $version + '-x64.exe')
+$setup = Join-Path $output ('CopilotPulse-Setup-' + $version + '-' + $arch + '.exe')
 Get-FileHash -LiteralPath $setup -Algorithm SHA256 | ForEach-Object {
     ($_.Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($_.Path)) | Set-Content -LiteralPath ($setup + '.sha256') -Encoding ascii
 }
